@@ -132,3 +132,4 @@ softcat/
 - ✅ **Edge**: 基于 Chromium
 - ✅ **Safari**: 需要额外适配
 - ✅ **Opera**: 基于 Chromium
+

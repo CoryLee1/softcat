@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>软体猫简单测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .status {
+            font-weight: bold;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+        
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            color: #2196f3;
+        }
+        
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #1976d2;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐱 软体猫测试页面</h1>
+        
+        <div class="instructions">
+            <h3>📋 测试步骤：</h3>
+            <ol>
+                <li>确保软体猫扩展已安装并启用</li>
+                <li>点击浏览器工具栏中的软体猫扩展图标</li>
+                <li>在弹窗中点击"切换软体猫"按钮</li>
+                <li>观察页面上的软体猫和下面的状态</li>
+            </ol>
+        </div>
+        
+        <div id="status" class="status info">
+            等待扩展注入软体猫...
+        </div>
+        
+        <div style="text-align: center;">
+            <button onclick="checkStatus()">检查状态</button>
+            <button onclick="toggleCat()">切换软体猫</button>
+        </div>
+    </div>
+    
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function checkStatus() {
+            const pixiLoaded = typeof PIXI !== 'undefined';
+            const matterLoaded = typeof Matter !== 'undefined';
+            const softcatLoaded = typeof window.SoftCat !== 'undefined';
+            
+            console.log('PIXI.js 加载状态:', pixiLoaded);
+            console.log('Matter.js 加载状态:', matterLoaded);
+            console.log('软体猫加载状态:', softcatLoaded);
+            
+            if (pixiLoaded && matterLoaded && softcatLoaded) {
+                updateStatus('✅ 所有组件已正确加载！软体猫可以正常工作', 'success');
+            } else {
+                let missing = [];
+                if (!pixiLoaded) missing.push('PIXI.js');
+                if (!matterLoaded) missing.push('Matter.js');
+                if (!softcatLoaded) missing.push('软体猫核心');
+                
+                updateStatus(`❌ 缺少组件: ${missing.join(', ')}`, 'error');
+            }
+        }
+        
+        function toggleCat() {
+            if (window.SoftCat) {
+                if (window.SoftCat.isRunning && window.SoftCat.isRunning()) {
+                    window.SoftCat.stop();
+                    updateStatus('软体猫已停止', 'info');
+                } else {
+                    window.SoftCat.start();
+                    updateStatus('软体猫已启动', 'success');
+                }
+            } else {
+                updateStatus('软体猫未加载，请检查扩展是否正确安装', 'error');
+            }
+        }
+        
+        // 页面加载完成后定期检查状态
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('页面加载完成，等待扩展注入...', 'info');
+            
+            // 每2秒检查一次状态
+            setInterval(checkStatus, 2000);
+        });
+        
+        // 监听软体猫容器创建
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    const container = document.getElementById('softcat-container');
+                    if (container) {
+                        updateStatus('软体猫容器已创建！', 'success');
+                        checkStatus();
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    </script>
+</body>
+</html>

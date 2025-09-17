@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>软体猫桌宠 - 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <img src="../assets/images/cat.png" alt="软体猫" class="cat-icon">
+      <h1>软体猫桌宠设置</h1>
+    </header>
+    
+    <main class="options-main">
+      <!-- 基本设置 -->
+      <section class="settings-section">
+        <h2>基本设置</h2>
+        
+        <div class="setting-item">
+          <label class="setting-label">
+            <input type="checkbox" id="catEnabled" class="setting-checkbox">
+            <span class="checkmark"></span>
+            启用软体猫桌宠
+          </label>
+          <p class="setting-description">在网页中显示可爱的软体猫桌宠</p>
+        </div>
+        
+        <div class="setting-item">
+          <label class="setting-label">
+            <input type="checkbox" id="physicsEnabled" class="setting-checkbox">
+            <span class="checkmark"></span>
+            启用物理引擎
+          </label>
+          <p class="setting-description">启用软体物理效果，让猫更加生动</p>
+        </div>
+        
+        <div class="setting-item">
+          <label class="setting-label">
+            <input type="checkbox" id="debugMode" class="setting-checkbox">
+            <span class="checkmark"></span>
+            调试模式
+          </label>
+          <p class="setting-description">显示物理网格和调试信息</p>
+        </div>
+      </section>
+      
+      <!-- 外观设置 -->
+      <section class="settings-section">
+        <h2>外观设置</h2>
+        
+        <div class="setting-item">
+          <label for="catSize" class="setting-label">软体猫大小</label>
+          <div class="slider-container">
+            <input type="range" id="catSize" class="setting-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+            <span class="slider-value" id="catSizeValue">1.0x</span>
+          </div>
+          <p class="setting-description">调整软体猫的显示大小</p>
+        </div>
+        
+        <div class="setting-item">
+          <label for="catPosition" class="setting-label">软体猫位置</label>
+          <div class="position-controls">
+            <div class="position-item">
+              <label for="positionX">水平位置</label>
+              <input type="range" id="positionX" class="setting-slider" min="0" max="100" value="50">
+              <span class="slider-value" id="positionXValue">50%</span>
+            </div>
+            <div class="position-item">
+              <label for="positionY">垂直位置</label>
+              <input type="range" id="positionY" class="setting-slider" min="0" max="100" value="65">
+              <span class="slider-value" id="positionYValue">65%</span>
+            </div>
+          </div>
+          <p class="setting-description">调整软体猫在页面中的位置</p>
+        </div>
+      </section>
+      
+      <!-- 高级设置 -->
+      <section class="settings-section">
+        <h2>高级设置</h2>
+        
+        <div class="setting-item">
+          <label for="physicsQuality" class="setting-label">物理质量</label>
+          <select id="physicsQuality" class="setting-select">
+            <option value="low">低 (性能优先)</option>
+            <option value="medium" selected>中 (平衡)</option>
+            <option value="high">高 (效果优先)</option>
+          </select>
+          <p class="setting-description">调整物理引擎的计算质量</p>
+        </div>
+        
+        <div class="setting-item">
+          <label for="animationSpeed" class="setting-label">动画速度</label>
+          <div class="slider-container">
+            <input type="range" id="animationSpeed" class="setting-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+            <span class="slider-value" id="animationSpeedValue">1.0x</span>
+          </div>
+          <p class="setting-description">调整软体猫的动画播放速度</p>
+        </div>
+      </section>
+      
+      <!-- 快捷键设置 -->
+      <section class="settings-section">
+        <h2>快捷键</h2>
+        
+        <div class="shortcut-list">
+          <div class="shortcut-item">
+            <span class="shortcut-key">V</span>
+            <span class="shortcut-description">切换物理网格显示</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-key">R</span>
+            <span class="shortcut-description">重置软体猫形状</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-key">拖拽洗衣机</span>
+            <span class="shortcut-description">移动整个系统</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <footer class="options-footer">
+      <div class="button-group">
+        <button id="saveSettings" class="btn btn-primary">保存设置</button>
+        <button id="resetSettings" class="btn btn-secondary">重置设置</button>
+        <button id="testCat" class="btn btn-accent">测试软体猫</button>
+      </div>
+      
+      <div class="version-info">
+        <p>软体猫桌宠 v1.0.0</p>
+        <p>让软体猫陪伴你的浏览时光 🐱</p>
+      </div>
+    </footer>
+  </div>
+  
+  <script src="options.js"></script>
+</body>
+</html>

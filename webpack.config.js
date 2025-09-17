@@ -39,7 +39,7 @@ module.exports = {
       {
         test: /\.(png|jpg|jpeg|gif|svg)$/,
         type: 'asset/resource'
-      }
+      },
     ]
   },
   
@@ -65,8 +65,16 @@ module.exports = {
           to: 'popup.html'
         },
         {
+          from: 'extension/popup/popup.css',
+          to: 'popup.css'
+        },
+        {
           from: 'extension/options/options.html',
           to: 'options.html'
+        },
+        {
+          from: 'extension/options/options.css',
+          to: 'options.css'
         },
         {
           from: 'extension/assets',
@@ -75,7 +83,11 @@ module.exports = {
         {
           from: 'shared',
           to: 'shared'
-        }
+        },
+        {
+          from: 'extension/lib',
+          to: 'lib'
+        },
       ]
     })
   ],
@@ -95,3 +107,4 @@ module.exports = {
     }
   }
 };
+

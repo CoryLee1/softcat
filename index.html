@@ -1,0 +1,553 @@
+<!-- index.html：引入 Pixi 与 Matter -->
+<script src="https://unpkg.com/pixi.js@7/dist/pixi.min.js"></script>
+<script src="https://unpkg.com/matter-js@0.19.0/build/matter.min.js"></script>
+<canvas id="app"></canvas>
+
+<!-- 控制说明 -->
+<div style="position: fixed; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; font-family: Arial, sans-serif; font-size: 12px;">
+  <div>🎮 控制说明：</div>
+  <div>• 拖拽洗衣机移动整个系统</div>
+  <div>• 按 V 键切换物理网格显示</div>
+  <div>• 按 R 键重置猫的形状</div>
+  <div>• 拖拽软体猫在洗衣机边缘移动</div>
+</div>
+<script>
+const { Engine, Runner, Render, Composite, Composites, Bodies, Body, Mouse, MouseConstraint, Constraint, World } = Matter;
+
+// ==================== 配置对象 ====================
+const CONFIG = {
+  machine: {
+    baseWidth: 144,
+    baseHeight: 200,
+    physicsScale: 1.5,
+    spriteScale: 2,
+    topOffset: 40,
+    topYRatio: 0.65
+  },
+  cat: {
+    cols: 8,
+    rows: 6,
+    spacing: 32,
+    particleRadius: 12,
+    pinOffset: -30  // 改为负值，让猫在洗衣机上方
+  },
+  constraints: {
+    pin: { stiffness: 0.3, damping: 0.9 }, // 增加刚度，减少阻尼
+    softBody: { stiffness: 0.9, damping: 0.8 }, // 增加软体刚度
+    tail: { stiffness: 0.8, damping: 0.1 }
+  },
+  tail: {
+    segments: 9,
+    length: 24,
+    radius: 8
+  },
+  physics: {
+    constraintIterations: 25, // 增加迭代次数
+    positionIterations: 25,
+    velocityIterations: 15,
+    gravity: { x: 0, y: 0.1 } // 添加轻微重力，让猫更自然
+  }
+};
+
+// ==================== 全局变量 ====================
+let app, engine, runner, render;
+let machine, washingMachineSprite;
+let softBody, pinConstraints = [];
+let isDraggingMachine = false;
+let dragOffset = { x: 0, y: 0 };
+let initialMachinePos = { x: 0, y: 0 };
+let initialSoftBodyPositions = [];
+let initialTailPositions = [];
+let showVisualization = true;
+
+// ==================== 初始化函数 ====================
+function initPixi() {
+  app = new PIXI.Application({
+    view: document.getElementById('app'),
+    resizeTo: window,
+    backgroundAlpha: 0,  // 透明背景
+    antialias: true,
+    transparent: true    // 确保支持透明度
+  });
+}
+
+function initMatter() {
+  engine = Engine.create({ 
+    constraintIterations: CONFIG.physics.constraintIterations,
+    positionIterations: CONFIG.physics.positionIterations,
+    velocityIterations: CONFIG.physics.velocityIterations,
+    enableSleeping: false, // 禁用睡眠，保持活跃
+    gravity: CONFIG.physics.gravity
+  });
+  
+  runner = Runner.create({
+    delta: 1000 / 60,
+    isFixed: true
+  });
+  
+  Runner.run(runner, engine);
+}
+
+function initMatterRenderer() {
+  render = Render.create({
+    canvas: document.createElement('canvas'),
+    engine: engine,
+    options: {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      wireframes: true,
+      background: 'transparent',
+      showAngleIndicator: false,
+      showVelocity: false,
+      showCollisions: false,
+      showAxes: false,
+      showPositions: false,
+      showBroadphase: false,
+      showBounds: false,
+      showSeparations: false,
+      showSleeping: false,
+      showStats: false,
+      showPerformance: false,
+      showDebug: false,
+      render: {
+        fillStyle: 'rgba(255, 255, 255, 0.1)',
+        strokeStyle: '#00ff00',
+        lineWidth: 1,
+        visible: true
+      }
+    }
+  });
+  
+  document.body.appendChild(render.canvas);
+  render.canvas.style.position = 'fixed';
+  render.canvas.style.top = '0';
+  render.canvas.style.left = '0';
+  render.canvas.style.zIndex = '1';
+  render.canvas.style.pointerEvents = 'none';
+  
+  Render.run(render);
+}
+
+// ==================== 位置计算函数 ====================
+function getMachineTopY() {
+  return window.innerHeight * CONFIG.machine.topYRatio;
+}
+
+function getMachineTopEdge() {
+  return machine.position.y - (CONFIG.machine.baseHeight * CONFIG.machine.physicsScale) / 2;
+}
+
+function getMachineBounds() {
+  const halfWidth = (CONFIG.machine.baseWidth * CONFIG.machine.physicsScale) / 2;
+  const halfHeight = (CONFIG.machine.baseHeight * CONFIG.machine.physicsScale) / 2;
+  return {
+    left: machine.position.x - halfWidth,
+    right: machine.position.x + halfWidth,
+    top: machine.position.y - halfHeight,
+    bottom: machine.position.y + halfHeight
+  };
+}
+
+function getCatOriginPosition() {
+  return {
+    x: machine.position.x - (CONFIG.cat.cols - 1) * CONFIG.cat.spacing / 2,
+    y: getMachineTopEdge() + CONFIG.cat.pinOffset - CONFIG.cat.rows * CONFIG.cat.spacing
+  };
+}
+
+// ==================== 洗衣机相关函数 ====================
+function createMachine() {
+  const machineTopY = getMachineTopY();
+  machine = Bodies.rectangle(
+    window.innerWidth * 0.5, 
+    machineTopY + CONFIG.machine.topOffset, 
+    CONFIG.machine.baseWidth * CONFIG.machine.physicsScale, 
+    CONFIG.machine.baseHeight * CONFIG.machine.physicsScale, 
+    { 
+      isStatic: true, 
+      render: { fillStyle: '#888888', strokeStyle: '#aaaaaa', lineWidth: 2 }
+    }
+  );
+  World.add(engine.world, machine);
+}
+
+function createWashingMachineSprite() {
+  const washingMachineTexture = PIXI.Texture.from('washing_machine.png');
+  washingMachineSprite = new PIXI.Sprite(washingMachineTexture);
+  washingMachineSprite.anchor.set(0.5, 0.5);
+  washingMachineSprite.width = CONFIG.machine.baseWidth * CONFIG.machine.spriteScale;
+  washingMachineSprite.height = CONFIG.machine.baseHeight * CONFIG.machine.spriteScale;
+  washingMachineSprite.x = machine.position.x;
+  washingMachineSprite.y = machine.position.y;
+  app.stage.addChild(washingMachineSprite);
+}
+
+// ==================== 软体猫相关函数 ====================
+function createSoftBody() {
+  const originPos = getCatOriginPosition();
+  
+  // 先创建软体，但不立即添加到世界
+  softBody = Composites.softBody(
+    originPos.x, originPos.y, CONFIG.cat.cols, CONFIG.cat.rows, 0, 0,
+    true,  // crossBrace：对角撑 → 更稳定
+    CONFIG.cat.particleRadius,
+    { 
+      frictionAir: 0.3, // 减少空气阻力
+      restitution: 0.1,
+      inertia: Infinity,
+      friction: 0.8,
+      density: 0.001, // 减少密度，让猫更轻
+      render: { fillStyle: '#00ff00', strokeStyle: '#00ff00', lineWidth: 1 }
+    },
+    { 
+      stiffness: CONFIG.constraints.softBody.stiffness,
+      damping: CONFIG.constraints.softBody.damping,
+      render: { strokeStyle: '#ffff00', lineWidth: 1 }
+    }
+  );
+  
+  // 确保软体粒子在正确位置
+  softBody.bodies.forEach((body, index) => {
+    const row = Math.floor(index / CONFIG.cat.cols);
+    const col = index % CONFIG.cat.cols;
+    const x = originPos.x + col * CONFIG.cat.spacing;
+    const y = originPos.y + row * CONFIG.cat.spacing;
+    Body.setPosition(body, { x, y });
+    Body.setVelocity(body, { x: 0, y: 0 });
+    Body.setAngularVelocity(body, 0);
+  });
+  
+  World.add(engine.world, softBody);
+  console.log('软体猫已创建，位置:', originPos);
+}
+
+function createPinConstraint(particleIndex) {
+  const particle = softBody.bodies[particleIndex];
+  const constraintY = getMachineTopEdge() + CONFIG.cat.pinOffset;
+  
+  return Constraint.create({
+    bodyA: particle,
+    pointB: { 
+      x: particle.position.x, 
+      y: constraintY
+    },
+    length: 0,
+    stiffness: CONFIG.constraints.pin.stiffness,
+    damping: CONFIG.constraints.pin.damping,
+    render: { strokeStyle: '#ff00ff', lineWidth: 2 }
+  });
+}
+
+function createPinConstraints() {
+  pinConstraints = [];
+  
+  // 只固定最底行的4个中心点，避免过度约束
+  const bottomRowStart = (CONFIG.cat.rows - 1) * CONFIG.cat.cols;
+  const centerStart = Math.floor((CONFIG.cat.cols - 4) / 2);
+  
+  console.log('创建约束点:');
+  console.log('洗衣机上边缘:', getMachineTopEdge());
+  console.log('约束点Y坐标:', getMachineTopEdge() + CONFIG.cat.pinOffset);
+  
+  for (let i = 0; i < 4; i++) {
+    const index = bottomRowStart + centerStart + i;
+    const particle = softBody.bodies[index];
+    console.log(`约束点${i}: 粒子位置(${particle.position.x}, ${particle.position.y})`);
+    pinConstraints.push(createPinConstraint(index));
+  }
+  
+  // 添加到世界
+  pinConstraints.forEach(pin => World.add(engine.world, pin));
+  console.log('约束已添加到世界');
+}
+
+function updatePinConstraints() {
+  pinConstraints.forEach(pin => {
+    pin.pointB.x = pin.bodyA.position.x;
+    pin.pointB.y = getMachineTopEdge() + CONFIG.cat.pinOffset;
+  });
+}
+
+// ==================== 拖拽相关函数 ====================
+function startDragging(mouseX, mouseY) {
+  isDraggingMachine = true;
+  dragOffset.x = mouseX - machine.position.x;
+  dragOffset.y = mouseY - machine.position.y;
+  
+  // 记录初始位置
+  initialMachinePos = { x: machine.position.x, y: machine.position.y };
+  initialSoftBodyPositions = softBody.bodies.map(body => ({ x: body.position.x, y: body.position.y }));
+  
+  // 记录尾巴初始位置
+  const tailBodies = engine.world.bodies.filter(body => 
+    body !== machine && !softBody.bodies.includes(body)
+  );
+  initialTailPositions = tailBodies.map(body => ({ x: body.position.x, y: body.position.y }));
+  
+  // 暂时移除固定约束，避免拖拽时冲突
+  pinConstraints.forEach(pin => {
+    World.remove(engine.world, pin);
+  });
+}
+
+function updateDragging(mouseX, mouseY) {
+  const newX = mouseX - dragOffset.x;
+  const newY = mouseY - dragOffset.y;
+  
+  // 计算移动距离
+  const deltaX = newX - initialMachinePos.x;
+  const deltaY = newY - initialMachinePos.y;
+  
+  // 更新洗衣机位置
+  Body.setPosition(machine, { x: newX, y: newY });
+  washingMachineSprite.x = newX;
+  washingMachineSprite.y = newY;
+  
+  // 更新软体猫的位置（基于初始位置）
+  softBody.bodies.forEach((body, index) => {
+    const initialPos = initialSoftBodyPositions[index];
+    Body.setPosition(body, {
+      x: initialPos.x + deltaX,
+      y: initialPos.y + deltaY
+    });
+  });
+  
+  // 更新尾巴位置
+  const tailBodies = engine.world.bodies.filter(body => 
+    body !== machine && !softBody.bodies.includes(body)
+  );
+  tailBodies.forEach((body, index) => {
+    const initialPos = initialTailPositions[index];
+    Body.setPosition(body, {
+      x: initialPos.x + deltaX,
+      y: initialPos.y + deltaY
+    });
+  });
+}
+
+function stopDragging() {
+  isDraggingMachine = false;
+  
+  // 重新添加固定约束
+  pinConstraints.forEach(pin => {
+    pin.pointB.x = pin.bodyA.position.x;
+    pin.pointB.y = getMachineTopEdge() + CONFIG.cat.pinOffset;
+    World.add(engine.world, pin);
+  });
+}
+
+// ==================== 事件监听器 ====================
+function setupEventListeners() {
+  app.view.addEventListener('mousedown', (e) => {
+    const rect = app.view.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const machineBounds = getMachineBounds();
+    
+    if (mouseX >= machineBounds.left && mouseX <= machineBounds.right &&
+        mouseY >= machineBounds.top && mouseY <= machineBounds.bottom) {
+      startDragging(mouseX, mouseY);
+      e.preventDefault();
+    }
+  });
+
+  app.view.addEventListener('mousemove', (e) => {
+    if (isDraggingMachine) {
+      const rect = app.view.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      updateDragging(mouseX, mouseY);
+    }
+  });
+
+  app.view.addEventListener('mouseup', () => {
+    if (isDraggingMachine) {
+      stopDragging();
+    }
+  });
+
+  app.view.addEventListener('dragstart', (e) => e.preventDefault());
+}
+
+// ==================== 尾巴相关函数 ====================
+function createTail() {
+  const tailBase = softBody.bodies[(CONFIG.cat.rows - 1) * CONFIG.cat.cols + (CONFIG.cat.cols - 1)];
+  let prev = tailBase;
+  
+  for (let i = 0; i < CONFIG.tail.segments; i++) {
+    const seg = Bodies.circle(
+      tailBase.position.x + (i + 1) * CONFIG.tail.length, 
+      tailBase.position.y, // 保持同一水平线
+      CONFIG.tail.radius, 
+      { 
+        frictionAir: 0.1,
+        friction: 0.5,
+        restitution: 0.1,
+        density: 0.0003, // 减少尾巴密度
+        render: { fillStyle: '#ff8800', strokeStyle: '#ff8800', lineWidth: 1 }
+      }
+    );
+    
+    const link = Constraint.create({ 
+      bodyA: prev, 
+      bodyB: seg, 
+      length: CONFIG.tail.length, 
+      stiffness: CONFIG.constraints.tail.stiffness,
+      damping: CONFIG.constraints.tail.damping,
+      render: { strokeStyle: '#ff8800', lineWidth: 1 }
+    });
+    
+    World.add(engine.world, [seg, link]);
+    prev = seg;
+  }
+}
+
+// ==================== 键盘控制函数 ====================
+function setupKeyboardControls() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'v') {
+      showVisualization = !showVisualization;
+      render.canvas.style.display = showVisualization ? 'block' : 'none';
+      console.log('物理可视化:', showVisualization ? '显示' : '隐藏');
+    } else if (e.key.toLowerCase() === 'r') {
+      resetCatShape();
+      console.log('猫的形状已重置');
+    }
+  });
+}
+
+// ==================== 重置函数 ====================
+function resetCatShape() {
+  const originPos = getCatOriginPosition();
+  
+  // 重新排列软体猫的粒子
+  softBody.bodies.forEach((body, index) => {
+    const row = Math.floor(index / CONFIG.cat.cols);
+    const col = index % CONFIG.cat.cols;
+    const newX = originPos.x + col * CONFIG.cat.spacing;
+    const newY = originPos.y + row * CONFIG.cat.spacing;
+    
+    Body.setPosition(body, { x: newX, y: newY });
+    Body.setVelocity(body, { x: 0, y: 0 });
+    Body.setAngularVelocity(body, 0);
+  });
+  
+  // 重置尾巴位置
+  const tailBodies = engine.world.bodies.filter(body => 
+    body !== machine && !softBody.bodies.includes(body)
+  );
+  const tailBase = softBody.bodies[(CONFIG.cat.rows - 1) * CONFIG.cat.cols + (CONFIG.cat.cols - 1)];
+  tailBodies.forEach((body, index) => {
+    const newX = tailBase.position.x + (index + 1) * CONFIG.tail.length;
+    const newY = tailBase.position.y;
+    Body.setPosition(body, { x: newX, y: newY });
+    Body.setVelocity(body, { x: 0, y: 0 });
+    Body.setAngularVelocity(body, 0);
+  });
+}
+
+// ==================== 渲染相关函数 ====================
+function createCatMesh() {
+  const tex = PIXI.Texture.from('cat.png');
+  const verts = new Float32Array(CONFIG.cat.cols * CONFIG.cat.rows * 2);
+  const uvs = new Float32Array(CONFIG.cat.cols * CONFIG.cat.rows * 2);
+  const indices = [];
+  
+  for (let y = 0; y < CONFIG.cat.rows; y++) {
+    for (let x = 0; x < CONFIG.cat.cols; x++) {
+      const idx = y * CONFIG.cat.cols + x;
+      // 初始顶点
+      verts[idx * 2] = softBody.bodies[idx].position.x;
+      verts[idx * 2 + 1] = softBody.bodies[idx].position.y;
+      // UV坐标
+      uvs[idx * 2] = x / (CONFIG.cat.cols - 1);
+      uvs[idx * 2 + 1] = y / (CONFIG.cat.rows - 1);
+      // 生成三角形索引
+      if (x < CONFIG.cat.cols - 1 && y < CONFIG.cat.rows - 1) {
+        const a = idx, b = idx + 1, c = idx + CONFIG.cat.cols, d = idx + CONFIG.cat.cols + 1;
+        indices.push(a, b, c, b, d, c);
+      }
+    }
+  }
+  
+  const mesh = new PIXI.SimpleMesh(tex, verts, uvs, indices, PIXI.DRAW_MODES.TRIANGLES);
+  mesh.tint = 0xFFFFFF;
+  app.stage.addChild(mesh);
+  
+  return { mesh, verts };
+}
+
+function setupMouseConstraint() {
+  const mouse = Mouse.create(app.view);
+  const mcon = MouseConstraint.create(engine, { 
+    mouse, 
+    constraint: { 
+      stiffness: 0.2,
+      damping: 0.5,
+      render: { visible: false } 
+    } 
+  });
+  World.add(engine.world, mcon);
+}
+
+function setupRenderLoop(catMesh) {
+  app.ticker.add(() => {
+    const bodies = softBody.bodies;
+    for (let i = 0; i < bodies.length; i++) {
+      catMesh.verts[i * 2] = bodies[i].position.x;
+      catMesh.verts[i * 2 + 1] = bodies[i].position.y;
+    }
+    
+    // 洗衣机震动效果（更温和）
+    const t = performance.now() * 0.001;
+    const bottomRowStart = (CONFIG.cat.rows - 1) * CONFIG.cat.cols;
+    const centerStart = Math.floor((CONFIG.cat.cols - 4) / 2);
+    
+    for (let i = 0; i < 4; i++) {
+      const index = bottomRowStart + centerStart + i;
+      Body.applyForce(softBody.bodies[index], softBody.bodies[index].position, { 
+        x: Math.sin(t * 3 + i) * 0.00005,
+        y: Math.cos(t * 2 + i) * 0.00002
+      });
+    }
+  });
+}locallolo
+
+圣诞节可能撒健康
+
+// ==================== 主初始化函数 ====================
+function init() {
+  // 初始化渲染引擎
+  initPixi();
+  initMatter();
+  initMatterRenderer();
+  
+  // 创建物理对象
+  createMachine();
+  createWashingMachineSprite();
+  createSoftBody();
+  createTail();
+  
+  // 延迟创建约束，让软体稳定后再添加
+  setTimeout(() => {
+    createPinConstraints();
+    console.log('约束已添加，猫应该稳定了');
+  }, 500);
+  
+  // 创建渲染对象
+  const catMesh = createCatMesh();
+  
+  // 设置交互
+  setupEventListeners();
+  setupKeyboardControls();
+  setupMouseConstraint();
+  setupRenderLoop(catMesh);
+  
+  console.log('软体猫桌宠初始化完成！');
+}
+
+// ==================== 启动应用 ====================
+init();
+
+</script>
