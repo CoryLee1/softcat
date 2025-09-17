@@ -20,6 +20,13 @@
     "service_worker": "background.js"
   },
   
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.iife.js"],
+      "run_at": "document_idle"
+    }
+  ],
   
   "action": {
     "default_popup": "popup.html",
@@ -45,9 +52,7 @@
     {
       "resources": [
         "assets/images/*",
-        "assets/sounds/*",
-        "shared/*",
-        "lib/*.js"
+        "assets/sounds/*"
       ],
       "matches": ["<all_urls>"]
     }

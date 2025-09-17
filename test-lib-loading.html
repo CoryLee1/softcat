@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库文件加载测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+        }
+        
+        .status {
+            font-weight: bold;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .info {
+            background: #cce7ff;
+            color: #004085;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 库文件加载测试</h1>
+        
+        <div class="test-section">
+            <h3>1. 直接加载本地库文件</h3>
+            <button class="btn" onclick="loadLocalLibraries()">加载本地库文件</button>
+            <div id="local-status">
+                <div class="status info">点击按钮开始测试</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 模拟扩展环境加载</h3>
+            <button class="btn" onclick="simulateExtensionLoading()">模拟扩展加载</button>
+            <div id="extension-status">
+                <div class="status info">点击按钮开始测试</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 检查Chrome扩展API</h3>
+            <div id="chrome-status">
+                <div class="status info">检查中...</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 测试结果</h3>
+            <div id="test-results">
+                <div class="status info">等待测试...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查Chrome扩展API
+        function checkChromeAPI() {
+            const statusDiv = document.getElementById('chrome-status');
+            
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                statusDiv.innerHTML = '<div class="status success">✅ Chrome扩展API可用</div>';
+                
+                // 尝试获取扩展URL
+                try {
+                    const p5Url = chrome.runtime.getURL('lib/p5.min.js');
+                    const matterUrl = chrome.runtime.getURL('lib/matter.min.js');
+                    
+                    statusDiv.innerHTML += `<div class="status success">✅ p5.js URL: ${p5Url}</div>`;
+                    statusDiv.innerHTML += `<div class="status success">✅ Matter.js URL: ${matterUrl}</div>`;
+                } catch (error) {
+                    statusDiv.innerHTML += `<div class="status error">❌ 获取URL失败: ${error.message}</div>`;
+                }
+            } else {
+                statusDiv.innerHTML = '<div class="status error">❌ Chrome扩展API不可用</div>';
+            }
+        }
+        
+        // 直接加载本地库文件
+        function loadLocalLibraries() {
+            const statusDiv = document.getElementById('local-status');
+            statusDiv.innerHTML = '<div class="status info">正在加载本地库文件...</div>';
+            
+            let loadedCount = 0;
+            const totalLibs = 2;
+            
+            function onLibraryLoaded(libName) {
+                loadedCount++;
+                statusDiv.innerHTML += `<div class="status success">✅ ${libName} 加载成功</div>`;
+                
+                if (loadedCount === totalLibs) {
+                    statusDiv.innerHTML += '<div class="status success">🎉 所有本地库文件加载完成！</div>';
+                    updateTestResults();
+                }
+            }
+            
+            function onLibraryError(libName, error) {
+                statusDiv.innerHTML += `<div class="status error">❌ ${libName} 加载失败: ${error}</div>`;
+            }
+            
+            // 加载p5.js
+            const p5Script = document.createElement('script');
+            p5Script.src = './lib/p5.min.js';
+            p5Script.onload = () => onLibraryLoaded('p5.js');
+            p5Script.onerror = () => onLibraryError('p5.js', '网络错误');
+            document.head.appendChild(p5Script);
+            
+            // 加载Matter.js
+            const matterScript = document.createElement('script');
+            matterScript.src = './lib/matter.min.js';
+            matterScript.onload = () => onLibraryLoaded('Matter.js');
+            matterScript.onerror = () => onLibraryError('Matter.js', '网络错误');
+            document.head.appendChild(matterScript);
+        }
+        
+        // 模拟扩展环境加载
+        function simulateExtensionLoading() {
+            const statusDiv = document.getElementById('extension-status');
+            statusDiv.innerHTML = '<div class="status info">正在模拟扩展环境加载...</div>';
+            
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                statusDiv.innerHTML += '<div class="status error">❌ 无法模拟扩展环境，Chrome API不可用</div>';
+                return;
+            }
+            
+            let loadedCount = 0;
+            const totalLibs = 2;
+            
+            function onLibraryLoaded(libName) {
+                loadedCount++;
+                statusDiv.innerHTML += `<div class="status success">✅ ${libName} 加载成功</div>`;
+                
+                if (loadedCount === totalLibs) {
+                    statusDiv.innerHTML += '<div class="status success">🎉 扩展环境加载完成！</div>';
+                    updateTestResults();
+                }
+            }
+            
+            function onLibraryError(libName, error) {
+                statusDiv.innerHTML += `<div class="status error">❌ ${libName} 加载失败: ${error}</div>`;
+            }
+            
+            // 使用chrome.runtime.getURL加载
+            const p5Script = document.createElement('script');
+            p5Script.src = chrome.runtime.getURL('lib/p5.min.js');
+            p5Script.onload = () => onLibraryLoaded('p5.js (扩展URL)');
+            p5Script.onerror = () => onLibraryError('p5.js (扩展URL)', '扩展URL加载失败');
+            document.head.appendChild(p5Script);
+            
+            const matterScript = document.createElement('script');
+            matterScript.src = chrome.runtime.getURL('lib/matter.min.js');
+            matterScript.onload = () => onLibraryLoaded('Matter.js (扩展URL)');
+            matterScript.onerror = () => onLibraryError('Matter.js (扩展URL)', '扩展URL加载失败');
+            document.head.appendChild(matterScript);
+        }
+        
+        // 更新测试结果
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            
+            const p5Loaded = typeof p5 !== 'undefined';
+            const matterLoaded = typeof Matter !== 'undefined';
+            
+            let resultsHTML = '';
+            
+            if (p5Loaded) {
+                resultsHTML += '<div class="status success">✅ p5.js 可用 (版本: ' + (p5.VERSION || '未知') + ')</div>';
+            } else {
+                resultsHTML += '<div class="status error">❌ p5.js 不可用</div>';
+            }
+            
+            if (matterLoaded) {
+                resultsHTML += '<div class="status success">✅ Matter.js 可用 (版本: ' + (Matter.version || '未知') + ')</div>';
+            } else {
+                resultsHTML += '<div class="status error">❌ Matter.js 不可用</div>';
+            }
+            
+            if (p5Loaded && matterLoaded) {
+                resultsHTML += '<div class="status success">🎉 所有库文件都可用，软体猫应该可以正常工作！</div>';
+            } else {
+                resultsHTML += '<div class="status error">⚠️ 部分库文件不可用，软体猫可能无法正常工作</div>';
+            }
+            
+            resultsDiv.innerHTML = resultsHTML;
+        }
+        
+        // 页面加载完成后检查
+        window.addEventListener('load', () => {
+            checkChromeAPI();
+        });
+    </script>
+</body>
+</html>

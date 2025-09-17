@@ -12,6 +12,10 @@
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
     "build:extension": "webpack --mode production",
+    "build:mv3": "node build.js",
+    "build:pixi": "npx esbuild src/vendor/pixi-entry.ts --bundle --format=iife --global-name=PIXI --outfile=dist/libs/pixi.iife.js",
+    "build:matter": "npx esbuild src/vendor/matter-entry.ts --bundle --format=iife --global-name=Matter --outfile=dist/libs/matter.iife.js",
+    "build:content": "npx esbuild src/content.ts --bundle --format=iife --outfile=dist/content.iife.js",
     "package": "npm run build && node scripts/package-extension.js",
     "test": "jest",
     "test:extension": "jest --testPathPattern=extension",
@@ -42,6 +46,7 @@
     "concurrently": "^8.2.1",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^7.1.2",
+    "esbuild": "^0.25.9",
     "eslint": "^8.49.0",
     "jest": "^29.7.0",
     "style-loader": "^4.0.0",
@@ -53,7 +58,8 @@
   },
   "dependencies": {
     "matter-js": "^0.19.0",
-    "pixi.js": "^7.3.2"
+    "p5": "^2.0.5",
+    "pixi.js": "^7.4.3"
   },
   "workspaces": [
     "frontend",

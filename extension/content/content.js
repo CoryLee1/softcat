@@ -1,165 +1,141 @@
-// 软体猫内容脚本 - 注入到网页中
-console.log('🐱 软体猫桌宠内容脚本已加载');
+// extension/content/content.js - 修复版本
+// 处理页面级别的消息通信
 
-class SoftCatInjector {
-  constructor() {
-    this.catContainer = null;
-    this.isInjected = false;
-    this.settings = {};
-    this.init();
-  }
-
-  async init() {
-    // 加载设置
-    await this.loadSettings();
+(function() {
+  'use strict';
+  
+  console.log('软体猫内容脚本已加载');
+  
+  // 监听来自弹窗和后台脚本的消息
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('内容脚本收到消息:', request);
     
-    // 等待页面完全加载
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => this.injectCat());
+    try {
+      switch (request.action) {
+        case 'toggleDebug':
+          handleToggleDebug(sendResponse);
+          break;
+          
+        case 'resetCat':
+          handleResetCat(sendResponse);
+          break;
+          
+        case 'stopSoftCat':
+          handleStopSoftCat(sendResponse);
+          break;
+          
+        case 'getSoftCatStatus':
+          handleGetStatus(sendResponse);
+          break;
+          
+        case 'test':
+          sendResponse({ status: 'content script working', url: window.location.href });
+          break;
+          
+        default:
+          sendResponse({ error: 'Unknown action: ' + request.action });
+      }
+    } catch (error) {
+      console.error('内容脚本处理消息失败:', error);
+      sendResponse({ error: error.message });
+    }
+    
+    return true; // 保持消息通道开放
+  });
+  
+  // 处理调试模式切换
+  function handleToggleDebug(sendResponse) {
+    if (window.SoftCat && window.SoftCat.toggleDebug) {
+      window.SoftCat.toggleDebug();
+      sendResponse({ success: true, message: '调试模式已切换' });
     } else {
-      this.injectCat();
+      sendResponse({ success: false, error: '软体猫未加载' });
     }
   }
-
-  // 加载设置
-  async loadSettings() {
-    try {
-      const result = await chrome.storage.sync.get({
-        catEnabled: true,
-        physicsEnabled: true,
+  
+  // 处理重置软体猫
+  function handleResetCat(sendResponse) {
+    if (window.SoftCat && window.SoftCat.resetCat) {
+      window.SoftCat.resetCat();
+      sendResponse({ success: true, message: '软体猫已重置' });
+    } else {
+      sendResponse({ success: false, error: '软体猫未加载' });
+    }
+  }
+  
+  // 处理停止软体猫
+  function handleStopSoftCat(sendResponse) {
+    if (window.SoftCat && window.SoftCat.stop) {
+      window.SoftCat.stop();
+      sendResponse({ success: true, message: '软体猫已停止' });
+    } else {
+      sendResponse({ success: false, error: '软体猫未运行' });
+    }
+  }
+  
+  // 获取软体猫状态
+  function handleGetStatus(sendResponse) {
+    if (window.SoftCat && window.SoftCat.getStatus) {
+      const status = window.SoftCat.getStatus();
+      sendResponse(status);
+    } else {
+      sendResponse({
+        loaded: !!window.SoftCatLoaded,
+        running: false,
         debugMode: false,
-        catSize: 1.0,
-        catPosition: { x: 50, y: 65 },
-        physicsQuality: 'medium',
-        animationSpeed: 1.0
+        error: '软体猫未加载'
       });
-      this.settings = result;
-    } catch (error) {
-      console.error('加载设置失败:', error);
     }
   }
-
-  async injectCat() {
-    if (this.isInjected || !this.settings.catEnabled) return;
-
-    try {
-      // 检查是否已经注入
-      if (document.getElementById('softcat-container')) {
-        console.log('软体猫已存在，跳过注入');
-        return;
-      }
-
-      // 检查必要的库
-      if (!this.checkLibraries()) {
-        console.error('PIXI.js 或 Matter.js 库未加载');
-        return;
-      }
-
-      // 创建软体猫容器
-      this.createCatContainer();
+  
+  // 监听页面变化，确保软体猫状态同步
+  let lastUrl = window.location.href;
+  const observer = new MutationObserver(() => {
+    if (window.location.href !== lastUrl) {
+      lastUrl = window.location.href;
+      console.log('页面URL发生变化，重新检查软体猫状态');
       
-      // 初始化软体猫
-      this.initializeSoftCat();
-      this.isInjected = true;
-      console.log('✅ 软体猫桌宠注入成功');
-      
-    } catch (error) {
-      console.error('❌ 软体猫注入失败:', error);
+      // 通知后台脚本页面已变化
+      chrome.runtime.sendMessage({
+        action: 'pageChanged',
+        url: window.location.href
+      }).catch(error => {
+        console.log('发送页面变化消息失败:', error);
+      });
     }
-  }
-
-  // 检查必要的库是否已加载
-  checkLibraries() {
-    return typeof PIXI !== 'undefined' && typeof Matter !== 'undefined';
-  }
-
-  createCatContainer() {
-    this.catContainer = document.createElement('div');
-    this.catContainer.id = 'softcat-container';
-    this.catContainer.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 2147483647;
-      overflow: hidden;
-    `;
-
-    document.body.appendChild(this.catContainer);
-  }
-
-  // 初始化软体猫
-  initializeSoftCat() {
-    // 软体猫核心脚本会自动初始化
-    // 这里可以添加额外的初始化逻辑
-    console.log('软体猫核心已初始化');
-  }
-
-  // 移除软体猫
-  removeCat() {
-    if (this.catContainer) {
-      this.catContainer.remove();
-      this.catContainer = null;
-      this.isInjected = false;
-      
-      // 停止软体猫
-      if (window.SoftCat && window.SoftCat.stop) {
-        window.SoftCat.stop();
-      }
-    }
-  }
-
-  // 更新设置
-  async updateSettings(newSettings) {
-    this.settings = { ...this.settings, ...newSettings };
-    await chrome.storage.sync.set(this.settings);
+  });
+  
+  observer.observe(document, {
+    subtree: true,
+    childList: true
+  });
+  
+  // 页面卸载时清理
+  window.addEventListener('beforeunload', () => {
+    observer.disconnect();
     
-    // 如果软体猫已注入，重新初始化
-    if (this.isInjected) {
-      this.removeCat();
-      setTimeout(() => this.injectCat(), 100);
+    if (window.SoftCat && window.SoftCat.stop) {
+      window.SoftCat.stop();
     }
-  }
-}
-
-// 监听来自popup和background的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
-    case 'toggleCat':
-      if (window.softCatInjector) {
-        if (window.softCatInjector.isInjected) {
-          window.softCatInjector.removeCat();
-        } else {
-          window.softCatInjector.injectCat();
-        }
-      }
-      sendResponse({ success: true });
-      break;
+  });
+  
+  // 定期向后台报告状态
+  setInterval(() => {
+    if (window.SoftCat && window.SoftCat.getStatus) {
+      const status = window.SoftCat.getStatus();
       
-    case 'getCatStatus':
-      sendResponse({ 
-        isInjected: window.softCatInjector?.isInjected || false,
-        enabled: window.softCatInjector?.settings?.catEnabled || false
-      });
-      break;
-      
-    case 'settingsUpdated':
-      if (window.softCatInjector && request.data) {
-        window.softCatInjector.updateSettings(request.data);
+      // 只在状态变化时报告
+      if (window.lastReportedStatus !== JSON.stringify(status)) {
+        chrome.runtime.sendMessage({
+          action: 'statusReport',
+          status: status
+        }).catch(error => {
+          // 忽略连接错误，这很正常
+        });
+        
+        window.lastReportedStatus = JSON.stringify(status);
       }
-      break;
-      
-    case 'injectCat':
-      if (window.softCatInjector) {
-        window.softCatInjector.injectCat();
-      }
-      sendResponse({ success: true });
-      break;
-  }
-});
-
-// 初始化软体猫注入器
-window.softCatInjector = new SoftCatInjector();
-
+    }
+  }, 5000); // 每5秒检查一次
+  
+})();

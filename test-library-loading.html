@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库文件加载测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #cce7ff; color: #004085; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 库文件加载测试</h1>
+    
+    <div class="test-section">
+        <h3>1. 检查Chrome扩展环境</h3>
+        <div id="extension-check">
+            <div class="status info">检查中...</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 测试库文件URL</h3>
+        <button class="btn" onclick="testLibraryURLs()">测试库文件URL</button>
+        <div id="url-test">
+            <div class="status info">点击按钮开始测试</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 测试库文件加载</h3>
+        <button class="btn" onclick="testLibraryLoading()">测试库文件加载</button>
+        <div id="loading-test">
+            <div class="status info">点击按钮开始测试</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. 测试结果</h3>
+        <div id="test-results">
+            <div class="status info">等待测试...</div>
+        </div>
+    </div>
+
+    <script>
+        // 检查扩展环境
+        function checkExtension() {
+            const checkDiv = document.getElementById('extension-check');
+            let html = '';
+            
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                html += '<div class="status success">✅ Chrome扩展API可用</div>';
+                
+                try {
+                    const pixiUrl = chrome.runtime.getURL('libs/pixi.iife.js');
+                    const matterUrl = chrome.runtime.getURL('libs/matter.iife.js');
+                    const coreUrl = chrome.runtime.getURL('shared/softcat-core.js');
+                    
+                    html += `<div class="status success">✅ PIXI.js URL: ${pixiUrl}</div>`;
+                    html += `<div class="status success">✅ Matter.js URL: ${matterUrl}</div>`;
+                    html += `<div class="status success">✅ 核心逻辑 URL: ${coreUrl}</div>`;
+                } catch (error) {
+                    html += `<div class="status error">❌ 获取URL失败: ${error.message}</div>`;
+                }
+            } else {
+                html += '<div class="status error">❌ Chrome扩展API不可用（请在扩展环境中测试）</div>';
+            }
+            
+            checkDiv.innerHTML = html;
+        }
+        
+        // 测试库文件URL
+        function testLibraryURLs() {
+            const testDiv = document.getElementById('url-test');
+            testDiv.innerHTML = '<div class="status info">正在测试库文件URL...</div>';
+            
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                testDiv.innerHTML += '<div class="status error">❌ 无法测试，Chrome API不可用</div>';
+                return;
+            }
+            
+            try {
+                const pixiUrl = chrome.runtime.getURL('libs/pixi.iife.js');
+                const matterUrl = chrome.runtime.getURL('libs/matter.iife.js');
+                
+                testDiv.innerHTML += `<div class="status success">✅ PIXI.js URL: ${pixiUrl}</div>`;
+                testDiv.innerHTML += `<div class="status success">✅ Matter.js URL: ${matterUrl}</div>`;
+                
+                // 测试URL是否可访问
+                fetch(pixiUrl)
+                    .then(response => {
+                        if (response.ok) {
+                            testDiv.innerHTML += '<div class="status success">✅ PIXI.js URL 可访问</div>';
+                        } else {
+                            testDiv.innerHTML += `<div class="status error">❌ PIXI.js URL 不可访问 (${response.status})</div>`;
+                        }
+                    })
+                    .catch(error => {
+                        testDiv.innerHTML += `<div class="status error">❌ PIXI.js URL 访问失败: ${error.message}</div>`;
+                    });
+                
+                fetch(matterUrl)
+                    .then(response => {
+                        if (response.ok) {
+                            testDiv.innerHTML += '<div class="status success">✅ Matter.js URL 可访问</div>';
+                        } else {
+                            testDiv.innerHTML += `<div class="status error">❌ Matter.js URL 不可访问 (${response.status})</div>`;
+                        }
+                    })
+                    .catch(error => {
+                        testDiv.innerHTML += `<div class="status error">❌ Matter.js URL 访问失败: ${error.message}</div>`;
+                    });
+                
+            } catch (error) {
+                testDiv.innerHTML += `<div class="status error">❌ 测试失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 测试库文件加载
+        function testLibraryLoading() {
+            const testDiv = document.getElementById('loading-test');
+            testDiv.innerHTML = '<div class="status info">正在测试库文件加载...</div>';
+            
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                testDiv.innerHTML += '<div class="status error">❌ 无法测试，Chrome API不可用</div>';
+                return;
+            }
+            
+            let loadedCount = 0;
+            const totalLibs = 2;
+            
+            function onLoad(libName) {
+                loadedCount++;
+                testDiv.innerHTML += `<div class="status success">✅ ${libName} 加载成功</div>`;
+                
+                if (loadedCount === totalLibs) {
+                    testDiv.innerHTML += '<div class="status success">🎉 所有库文件加载完成！</div>';
+                    checkLibraries();
+                }
+            }
+            
+            function onError(libName, error) {
+                testDiv.innerHTML += `<div class="status error">❌ ${libName} 加载失败: ${error}</div>`;
+            }
+            
+            // 加载PIXI.js
+            const pixiScript = document.createElement('script');
+            pixiScript.src = chrome.runtime.getURL('libs/pixi.iife.js');
+            pixiScript.onload = () => onLoad('PIXI.js');
+            pixiScript.onerror = () => onError('PIXI.js', '加载失败');
+            document.head.appendChild(pixiScript);
+            
+            // 加载Matter.js
+            const matterScript = document.createElement('script');
+            matterScript.src = chrome.runtime.getURL('libs/matter.iife.js');
+            matterScript.onload = () => onLoad('Matter.js');
+            matterScript.onerror = () => onError('Matter.js', '加载失败');
+            document.head.appendChild(matterScript);
+        }
+        
+        // 检查库文件状态
+        function checkLibraries() {
+            const resultsDiv = document.getElementById('test-results');
+            let html = '';
+            
+            const pixiLoaded = typeof window.PIXI !== 'undefined';
+            const matterLoaded = typeof window.Matter !== 'undefined';
+            
+            if (pixiLoaded) {
+                html += `<div class="status success">✅ PIXI.js 已加载 (版本: ${window.PIXI.VERSION || '未知'})</div>`;
+            } else {
+                html += '<div class="status error">❌ PIXI.js 未加载</div>';
+            }
+            
+            if (matterLoaded) {
+                html += `<div class="status success">✅ Matter.js 已加载 (版本: ${window.Matter.version || '未知'})</div>`;
+            } else {
+                html += '<div class="status error">❌ Matter.js 未加载</div>';
+            }
+            
+            if (pixiLoaded && matterLoaded) {
+                html += '<div class="status success">🎉 所有库文件都可用，软体猫应该可以正常工作！</div>';
+            } else {
+                html += '<div class="status error">⚠️ 部分库文件不可用，软体猫可能无法正常工作</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        // 页面加载完成后检查
+        window.addEventListener('load', () => {
+            checkExtension();
+        });
+    </script>
+</body>
+</html>

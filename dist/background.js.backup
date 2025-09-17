@@ -1,0 +1,66 @@
+// background.js - 简化版本，专注于库文件加载
+
+let softcatEnabled = false;
+
+// 监听扩展安装
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('软体猫扩展已安装');
+});
+
+// 监听来自弹窗的消息
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  try {
+    if (request.action === 'toggleSoftCat') {
+      const result = await toggleSoftCat();
+      sendResponse(result);
+    } else if (request.action === 'getSoftCatStatus') {
+      sendResponse({ enabled: softcatEnabled });
+    } else if (request.action === 'test') {
+      sendResponse({ status: 'background script working' });
+    }
+  } catch (error) {
+    console.error('Background script error:', error);
+    sendResponse({ error: error.message });
+  }
+  return true; // 保持消息通道开放
+});
+
+// 切换软体猫状态
+async function toggleSoftCat() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tab) {
+      throw new Error('无法获取当前标签页');
+    }
+
+    if (softcatEnabled) {
+      // 停止软体猫
+      await chrome.tabs.sendMessage(tab.id, { action: 'stopSoftCat' });
+      softcatEnabled = false;
+      return { success: true, enabled: false, message: '软体猫已停止' };
+    } else {
+      // 启动软体猫 - 内容脚本会自动处理库文件加载
+      softcatEnabled = true;
+      return { success: true, enabled: true, message: '软体猫已启动' };
+    }
+  } catch (error) {
+    console.error('切换软体猫状态失败:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// 处理标签页更新
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && softcatEnabled) {
+    // 页面刷新后重新注入
+    setTimeout(() => {
+      console.log('页面刷新，软体猫状态:', softcatEnabled);
+    }, 1000);
+  }
+});
+
+// 处理标签页激活
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  // 可以在这里添加标签页切换时的逻辑
+});

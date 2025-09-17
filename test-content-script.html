@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内容脚本测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #cce7ff; color: #004085; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 内容脚本测试</h1>
+    
+    <div class="test-section">
+        <h3>1. 检查内容脚本是否加载</h3>
+        <div id="content-script-check">
+            <div class="status info">检查中...</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 检查库文件状态</h3>
+        <button class="btn" onclick="checkLibraries()">检查库文件</button>
+        <div id="library-check">
+            <div class="status info">点击按钮开始检查</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 手动测试库文件加载</h3>
+        <button class="btn" onclick="testManualLoading()">手动加载库文件</button>
+        <div id="manual-loading">
+            <div class="status info">点击按钮开始测试</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. 控制台日志</h3>
+        <div id="console-info">
+            <div class="status info">查看浏览器控制台获取详细日志</div>
+        </div>
+    </div>
+
+    <script>
+        // 检查内容脚本是否加载
+        function checkContentScript() {
+            const checkDiv = document.getElementById('content-script-check');
+            let html = '';
+            
+            // 检查是否有内容脚本的痕迹
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                html += '<div class="status success">✅ Chrome扩展API可用</div>';
+                
+                // 检查是否有软体猫相关的全局变量
+                if (window.SoftCatLoaded) {
+                    html += '<div class="status success">✅ 软体猫已加载</div>';
+                } else {
+                    html += '<div class="status info">ℹ️ 软体猫未加载</div>';
+                }
+                
+                if (window.SoftCatLibraryLoader) {
+                    html += '<div class="status success">✅ 库文件加载器已存在</div>';
+                } else {
+                    html += '<div class="status info">ℹ️ 库文件加载器不存在</div>';
+                }
+                
+            } else {
+                html += '<div class="status error">❌ Chrome扩展API不可用</div>';
+            }
+            
+            checkDiv.innerHTML = html;
+        }
+        
+        // 检查库文件状态
+        function checkLibraries() {
+            const checkDiv = document.getElementById('library-check');
+            let html = '';
+            
+            const pixiLoaded = typeof window.PIXI !== 'undefined';
+            const matterLoaded = typeof window.Matter !== 'undefined';
+            
+            if (pixiLoaded) {
+                html += `<div class="status success">✅ PIXI.js 已加载 (版本: ${window.PIXI.VERSION || '未知'})</div>`;
+            } else {
+                html += '<div class="status error">❌ PIXI.js 未加载</div>';
+            }
+            
+            if (matterLoaded) {
+                html += `<div class="status success">✅ Matter.js 已加载 (版本: ${window.Matter.version || '未知'})</div>`;
+            } else {
+                html += '<div class="status error">❌ Matter.js 未加载</div>';
+            }
+            
+            if (pixiLoaded && matterLoaded) {
+                html += '<div class="status success">🎉 所有库文件都可用！</div>';
+            } else {
+                html += '<div class="status error">⚠️ 部分库文件不可用</div>';
+            }
+            
+            checkDiv.innerHTML = html;
+        }
+        
+        // 手动测试库文件加载
+        function testManualLoading() {
+            const testDiv = document.getElementById('manual-loading');
+            testDiv.innerHTML = '<div class="status info">正在手动加载库文件...</div>';
+            
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                testDiv.innerHTML += '<div class="status error">❌ 无法测试，Chrome API不可用</div>';
+                return;
+            }
+            
+            let loadedCount = 0;
+            const totalLibs = 2;
+            
+            function onLoad(libName) {
+                loadedCount++;
+                testDiv.innerHTML += `<div class="status success">✅ ${libName} 加载成功</div>`;
+                
+                if (loadedCount === totalLibs) {
+                    testDiv.innerHTML += '<div class="status success">🎉 所有库文件手动加载完成！</div>';
+                    checkLibraries();
+                }
+            }
+            
+            function onError(libName, error) {
+                testDiv.innerHTML += `<div class="status error">❌ ${libName} 加载失败: ${error}</div>`;
+            }
+            
+            // 加载PIXI.js
+            const pixiScript = document.createElement('script');
+            pixiScript.src = chrome.runtime.getURL('libs/pixi.iife.js');
+            pixiScript.onload = () => onLoad('PIXI.js');
+            pixiScript.onerror = () => onError('PIXI.js', '加载失败');
+            document.head.appendChild(pixiScript);
+            
+            // 加载Matter.js
+            const matterScript = document.createElement('script');
+            matterScript.src = chrome.runtime.getURL('libs/matter.iife.js');
+            matterScript.onload = () => onLoad('Matter.js');
+            matterScript.onerror = () => onError('Matter.js', '加载失败');
+            document.head.appendChild(matterScript);
+        }
+        
+        // 页面加载完成后检查
+        window.addEventListener('load', () => {
+            checkContentScript();
+        });
+        
+        // 定期检查库文件状态
+        setInterval(() => {
+            const pixiLoaded = typeof window.PIXI !== 'undefined';
+            const matterLoaded = typeof window.Matter !== 'undefined';
+            console.log('库文件状态检查:', { pixiLoaded, matterLoaded });
+        }, 2000);
+    </script>
+</body>
+</html>
