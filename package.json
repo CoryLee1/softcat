@@ -1,0 +1,61 @@
+{
+  "name": "softcat-webextension",
+  "version": "1.0.0",
+  "description": "软体猫桌宠 WebExtension - 一个可爱的浏览器扩展",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:extension\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:extension": "webpack --mode development --watch",
+    "build": "npm run build:frontend && npm run build:backend && npm run build:extension",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:extension": "webpack --mode production",
+    "package": "npm run build && node scripts/package-extension.js",
+    "test": "jest",
+    "test:extension": "jest --testPathPattern=extension",
+    "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
+    "lint:fix": "eslint . --ext .js,.ts,.jsx,.tsx --fix",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "webextension",
+    "desktop-pet",
+    "soft-body",
+    "physics",
+    "pixi.js",
+    "matter.js",
+    "browser-extension"
+  ],
+  "author": "CoryLee1",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.6.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "concurrently": "^8.2.1",
+    "copy-webpack-plugin": "^11.0.0",
+    "eslint": "^8.49.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "matter-js": "^0.19.0",
+    "pixi.js": "^7.3.2"
+  },
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

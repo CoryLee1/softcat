@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>软体猫桌宠</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <img src="../assets/images/cat.png" alt="软体猫" class="cat-icon">
+      <h1>软体猫桌宠</h1>
+    </header>
+    
+    <main class="popup-main">
+      <div class="status-section">
+        <div class="status-indicator" id="statusIndicator">
+          <span class="status-dot"></span>
+          <span class="status-text">检查中...</span>
+        </div>
+      </div>
+      
+      <div class="controls-section">
+        <button id="toggleCat" class="control-btn primary">
+          <span class="btn-icon">🐱</span>
+          <span class="btn-text">切换软体猫</span>
+        </button>
+        
+        <button id="openOptions" class="control-btn secondary">
+          <span class="btn-icon">⚙️</span>
+          <span class="btn-text">设置</span>
+        </button>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-item">
+          <span class="info-label">版本:</span>
+          <span class="info-value">1.0.0</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">状态:</span>
+          <span class="info-value" id="catStatus">未知</span>
+        </div>
+      </div>
+    </main>
+    
+    <footer class="popup-footer">
+      <p>让软体猫陪伴你的浏览时光 🐱</p>
+    </footer>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
