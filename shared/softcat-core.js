@@ -338,6 +338,10 @@
         isFixed: true
       });
       
+      // 🔥 关键修复：立即启动物理引擎
+      Runner.run(this.runner, this.engine);
+      console.log('✅ [SOFTCAT] 物理引擎已启动');
+      
       // 创建调试渲染器（默认隐藏）
       this.render = Render.create({
         canvas: document.createElement('canvas'),
