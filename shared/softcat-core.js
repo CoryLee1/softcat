@@ -982,24 +982,43 @@
         return;
       }
       
-      // 发送消息给background script收集所有tab
-      chrome.runtime.sendMessage({ action: 'collectAllTabs' }, (response) => {
-        console.log('📨 [SOFTCAT] 收到background响应:', response);
+      console.log('📤 [SOFTCAT] 发送消息给background script...');
+      
+      // 先发送测试消息验证通信
+      chrome.runtime.sendMessage({ action: 'test' }, (testResponse) => {
+        console.log('🧪 [SOFTCAT] 测试消息响应:', testResponse);
         
         if (chrome.runtime.lastError) {
-          console.error('❌ [SOFTCAT] chrome.runtime错误:', chrome.runtime.lastError);
-          this.showNotification('通信失败: ' + chrome.runtime.lastError.message, 'error');
+          console.error('❌ [SOFTCAT] 测试消息失败:', chrome.runtime.lastError);
+          this.showNotification('无法连接到background script', 'error');
           return;
         }
         
-        if (response && response.success) {
-          console.log('✅ [SOFTCAT] 一键收Tab成功:', response);
-          this.showNotification(`已收集 ${response.count} 个标签页，关闭了 ${response.closedCount} 个，正在打开洗衣房...`);
-        } else {
-          console.error('❌ [SOFTCAT] 一键收Tab失败:', response?.error);
-          this.showNotification('一键收Tab失败: ' + (response?.error || '未知错误'), 'error');
-        }
+        // 测试成功后发送真正的消息
+        console.log('✅ [SOFTCAT] 通信正常，发送collectAllTabs消息...');
+        chrome.runtime.sendMessage({ action: 'collectAllTabs' }, (response) => {
+          console.log('📨 [SOFTCAT] 收到background响应:', response);
+          
+          if (chrome.runtime.lastError) {
+            console.error('❌ [SOFTCAT] chrome.runtime错误:', chrome.runtime.lastError);
+            this.showNotification('通信失败: ' + chrome.runtime.lastError.message, 'error');
+            return;
+          }
+          
+          if (response && response.success) {
+            console.log('✅ [SOFTCAT] 一键收Tab成功:', response);
+            this.showNotification(`已收集 ${response.count} 个标签页，关闭了 ${response.closedCount} 个，正在打开洗衣房...`);
+          } else {
+            console.error('❌ [SOFTCAT] 一键收Tab失败:', response?.error);
+            this.showNotification('一键收Tab失败: ' + (response?.error || '未知错误'), 'error');
+          }
+        });
       });
+      
+      // 添加超时检测
+      setTimeout(() => {
+        console.log('⏰ [SOFTCAT] 检查消息是否超时...');
+      }, 1000);
     }
 
     // 打开洗衣房

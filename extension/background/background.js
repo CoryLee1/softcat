@@ -2,6 +2,7 @@
 // 改进状态管理和错误处理
 
 console.log('🔧 [BACKGROUND] 软体猫后台脚本已加载');
+console.log('🚀 [BACKGROUND] 后台脚本正在运行，时间:', new Date().toISOString());
 
 // 导入数据库管理器
 importScripts('./database.js');
