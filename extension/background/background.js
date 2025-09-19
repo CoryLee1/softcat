@@ -4,14 +4,14 @@
 console.log('🔧 [BACKGROUND] 软体猫后台脚本已加载');
 console.log('🚀 [BACKGROUND] 后台脚本正在运行，时间:', new Date().toISOString());
 
-// 导入数据库管理器
-importScripts('./database.js');
+// 暂时移除数据库导入，使用chrome.storage.local
+// importScripts('./database.js');
 
 class SoftCatBackgroundManager {
   constructor() {
     this.tabStates = new Map(); // 存储每个标签页的状态
     this.globalEnabled = false;
-    this.database = new SoftCatDatabase(); // 初始化数据库
+    // this.database = new SoftCatDatabase(); // 暂时移除数据库
     
     this.init();
   }
@@ -455,19 +455,10 @@ class SoftCatBackgroundManager {
     try {
       console.log('📋 [BACKGROUND] 开始一键收Tab...');
       
-      // 检查数据库是否可用
-      if (!this.database) {
-        console.error('❌ [BACKGROUND] 数据库未初始化');
-        return { success: false, error: '数据库未初始化' };
-      }
-      
-      // 初始化数据库
-      console.log('🗄️ [BACKGROUND] 初始化数据库...');
-      await this.database.init();
-      console.log('✅ [BACKGROUND] 数据库初始化完成');
-      
       // 获取所有标签页
       const tabs = await chrome.tabs.query({});
+      console.log(`📊 [BACKGROUND] 找到 ${tabs.length} 个标签页`);
+      
       const tabData = tabs.map(tab => ({
         id: tab.id,
         url: tab.url,
@@ -481,23 +472,20 @@ class SoftCatBackgroundManager {
         lastAccessed: tab.lastAccessed || Date.now()
       }));
       
-      console.log(`📊 [BACKGROUND] 开始处理 ${tabData.length} 个标签页...`);
+      // 保存到chrome.storage.local
+      const collectionData = {
+        id: Date.now().toString(),
+        name: '一键收Tab',
+        tabs: tabData,
+        createdAt: new Date().toISOString(),
+        count: tabData.length
+      };
       
-      // 保存每个标签页的详细信息到数据库
-      const savedTabIds = [];
-      for (const tab of tabData) {
-        try {
-          const savedTab = await this.database.saveTabDetails(tab);
-          savedTabIds.push(savedTab.id);
-          console.log(`✅ [BACKGROUND] 已保存标签页: ${savedTab.summary}`);
-        } catch (error) {
-          console.error(`❌ [BACKGROUND] 保存标签页失败: ${tab.url}`, error);
-        }
-      }
+      await chrome.storage.local.set({
+        'latestCollection': collectionData
+      });
       
-      // 保存收集记录
-      const collectionId = await this.database.saveCollection(savedTabIds, '一键收Tab');
-      console.log(`📚 [BACKGROUND] 已保存收集记录: ${collectionId}`);
+      console.log(`💾 [BACKGROUND] 已保存到chrome.storage.local`);
       
       // 关闭除当前标签页外的所有标签页
       const currentTab = tabs.find(tab => tab.active);
@@ -523,8 +511,8 @@ class SoftCatBackgroundManager {
         tabs: tabData,
         count: tabData.length,
         closedCount: tabsToClose.length,
-        savedCount: savedTabIds.length,
-        collectionId: collectionId,
+        savedCount: tabData.length,
+        collectionId: collectionData.id,
         timestamp: Date.now()
       };
       
@@ -568,19 +556,27 @@ class SoftCatBackgroundManager {
     }
   }
 
-  // 获取数据库中的标签页
+  // 获取存储的标签页
   async getDatabaseTabs() {
     try {
-      await this.database.init();
-      const tabs = await this.database.getAllTabs();
+      const result = await chrome.storage.local.get(['latestCollection']);
+      const collection = result.latestCollection;
       
-      return {
-        success: true,
-        tabs: tabs,
-        count: tabs.length
-      };
+      if (collection && collection.tabs) {
+        return {
+          success: true,
+          tabs: collection.tabs,
+          count: collection.tabs.length
+        };
+      } else {
+        return {
+          success: true,
+          tabs: [],
+          count: 0
+        };
+      }
     } catch (error) {
-      console.error('❌ [BACKGROUND] 获取数据库标签页失败:', error);
+      console.error('❌ [BACKGROUND] 获取存储标签页失败:', error);
       return {
         success: false,
         error: error.message
@@ -591,16 +587,15 @@ class SoftCatBackgroundManager {
   // 获取最新收集记录
   async getLatestCollection() {
     try {
-      await this.database.init();
-      const collection = await this.database.getLatestCollection();
+      const result = await chrome.storage.local.get(['latestCollection']);
+      const collection = result.latestCollection;
       
       if (collection) {
-        const tabs = await this.database.getTabsByCollection(collection.id);
         return {
           success: true,
           collection: collection,
-          tabs: tabs,
-          count: tabs.length
+          tabs: collection.tabs || [],
+          count: collection.tabs ? collection.tabs.length : 0
         };
       } else {
         return {

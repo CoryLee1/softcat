@@ -1,6 +1,5 @@
 /******/ (() => { // webpackBootstrap
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -25,14 +24,14 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
 console.log('🔧 [BACKGROUND] 软体猫后台脚本已加载');
 console.log('🚀 [BACKGROUND] 后台脚本正在运行，时间:', new Date().toISOString());
 
-// 导入数据库管理器
-importScripts('./database.js');
+// 暂时移除数据库导入，使用chrome.storage.local
+// importScripts('./database.js');
 var SoftCatBackgroundManager = /*#__PURE__*/function () {
   function SoftCatBackgroundManager() {
     _classCallCheck(this, SoftCatBackgroundManager);
     this.tabStates = new Map(); // 存储每个标签页的状态
     this.globalEnabled = false;
-    this.database = new SoftCatDatabase(); // 初始化数据库
+    // this.database = new SoftCatDatabase(); // 暂时移除数据库
 
     this.init();
   }
@@ -691,36 +690,19 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
     key: "collectAllTabs",
     value: function () {
       var _collectAllTabs = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
-        var tabs, tabData, savedTabIds, _iterator, _step, tab, savedTab, collectionId, currentTab, tabsToClose, tabIds, laundryRoomUrl, _t0, _t1, _t10;
+        var tabs, tabData, collectionData, currentTab, tabsToClose, tabIds, laundryRoomUrl, _t0;
         return _regenerator().w(function (_context1) {
           while (1) switch (_context1.p = _context1.n) {
             case 0:
               _context1.p = 0;
               console.log('📋 [BACKGROUND] 开始一键收Tab...');
 
-              // 检查数据库是否可用
-              if (this.database) {
-                _context1.n = 1;
-                break;
-              }
-              console.error('❌ [BACKGROUND] 数据库未初始化');
-              return _context1.a(2, {
-                success: false,
-                error: '数据库未初始化'
-              });
-            case 1:
-              // 初始化数据库
-              console.log('🗄️ [BACKGROUND] 初始化数据库...');
-              _context1.n = 2;
-              return this.database.init();
-            case 2:
-              console.log('✅ [BACKGROUND] 数据库初始化完成');
-
               // 获取所有标签页
-              _context1.n = 3;
+              _context1.n = 1;
               return chrome.tabs.query({});
-            case 3:
+            case 1:
               tabs = _context1.v;
+              console.log("\uD83D\uDCCA [BACKGROUND] \u627E\u5230 ".concat(tabs.length, " \u4E2A\u6807\u7B7E\u9875"));
               tabData = tabs.map(function (tab) {
                 return {
                   id: tab.id,
@@ -734,53 +716,20 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
                   mutedInfo: tab.mutedInfo,
                   lastAccessed: tab.lastAccessed || Date.now()
                 };
+              }); // 保存到chrome.storage.local
+              collectionData = {
+                id: Date.now().toString(),
+                name: '一键收Tab',
+                tabs: tabData,
+                createdAt: new Date().toISOString(),
+                count: tabData.length
+              };
+              _context1.n = 2;
+              return chrome.storage.local.set({
+                'latestCollection': collectionData
               });
-              console.log("\uD83D\uDCCA [BACKGROUND] \u5F00\u59CB\u5904\u7406 ".concat(tabData.length, " \u4E2A\u6807\u7B7E\u9875..."));
-
-              // 保存每个标签页的详细信息到数据库
-              savedTabIds = [];
-              _iterator = _createForOfIteratorHelper(tabData);
-              _context1.p = 4;
-              _iterator.s();
-            case 5:
-              if ((_step = _iterator.n()).done) {
-                _context1.n = 10;
-                break;
-              }
-              tab = _step.value;
-              _context1.p = 6;
-              _context1.n = 7;
-              return this.database.saveTabDetails(tab);
-            case 7:
-              savedTab = _context1.v;
-              savedTabIds.push(savedTab.id);
-              console.log("\u2705 [BACKGROUND] \u5DF2\u4FDD\u5B58\u6807\u7B7E\u9875: ".concat(savedTab.summary));
-              _context1.n = 9;
-              break;
-            case 8:
-              _context1.p = 8;
-              _t0 = _context1.v;
-              console.error("\u274C [BACKGROUND] \u4FDD\u5B58\u6807\u7B7E\u9875\u5931\u8D25: ".concat(tab.url), _t0);
-            case 9:
-              _context1.n = 5;
-              break;
-            case 10:
-              _context1.n = 12;
-              break;
-            case 11:
-              _context1.p = 11;
-              _t1 = _context1.v;
-              _iterator.e(_t1);
-            case 12:
-              _context1.p = 12;
-              _iterator.f();
-              return _context1.f(12);
-            case 13:
-              _context1.n = 14;
-              return this.database.saveCollection(savedTabIds, '一键收Tab');
-            case 14:
-              collectionId = _context1.v;
-              console.log("\uD83D\uDCDA [BACKGROUND] \u5DF2\u4FDD\u5B58\u6536\u96C6\u8BB0\u5F55: ".concat(collectionId));
+            case 2:
+              console.log("\uD83D\uDCBE [BACKGROUND] \u5DF2\u4FDD\u5B58\u5230chrome.storage.local");
 
               // 关闭除当前标签页外的所有标签页
               currentTab = tabs.find(function (tab) {
@@ -790,45 +739,45 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
                 return tab.id !== currentTab.id;
               });
               if (!(tabsToClose.length > 0)) {
-                _context1.n = 16;
+                _context1.n = 4;
                 break;
               }
               tabIds = tabsToClose.map(function (tab) {
                 return tab.id;
               });
-              _context1.n = 15;
+              _context1.n = 3;
               return chrome.tabs.remove(tabIds);
-            case 15:
+            case 3:
               console.log("\uD83D\uDDD1\uFE0F [BACKGROUND] \u5DF2\u5173\u95ED ".concat(tabsToClose.length, " \u4E2A\u6807\u7B7E\u9875"));
-            case 16:
+            case 4:
               // 打开洗衣房页面
               laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
-              _context1.n = 17;
+              _context1.n = 5;
               return chrome.tabs.create({
                 url: laundryRoomUrl,
                 active: true
               });
-            case 17:
+            case 5:
               console.log('🏠 [BACKGROUND] 已打开洗衣房页面');
               return _context1.a(2, {
                 success: true,
                 tabs: tabData,
                 count: tabData.length,
                 closedCount: tabsToClose.length,
-                savedCount: savedTabIds.length,
-                collectionId: collectionId,
+                savedCount: tabData.length,
+                collectionId: collectionData.id,
                 timestamp: Date.now()
               });
-            case 18:
-              _context1.p = 18;
-              _t10 = _context1.v;
-              console.error('❌ [BACKGROUND] 一键收Tab失败:', _t10);
+            case 6:
+              _context1.p = 6;
+              _t0 = _context1.v;
+              console.error('❌ [BACKGROUND] 一键收Tab失败:', _t0);
               return _context1.a(2, {
                 success: false,
-                error: _t10.message
+                error: _t0.message
               });
           }
-        }, _callee1, this, [[6, 8], [4, 11, 12, 13], [0, 18]]);
+        }, _callee1, null, [[0, 6]]);
       }));
       function collectAllTabs() {
         return _collectAllTabs.apply(this, arguments);
@@ -839,7 +788,7 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
     key: "openLaundryRoom",
     value: function () {
       var _openLaundryRoom = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee10() {
-        var laundryRoomUrl, tab, _t11;
+        var laundryRoomUrl, tab, _t1;
         return _regenerator().w(function (_context10) {
           while (1) switch (_context10.p = _context10.n) {
             case 0:
@@ -864,11 +813,11 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
               });
             case 2:
               _context10.p = 2;
-              _t11 = _context10.v;
-              console.error('❌ [BACKGROUND] 打开洗衣房失败:', _t11);
+              _t1 = _context10.v;
+              console.error('❌ [BACKGROUND] 打开洗衣房失败:', _t1);
               return _context10.a(2, {
                 success: false,
-                error: _t11.message
+                error: _t1.message
               });
           }
         }, _callee10, null, [[0, 2]]);
@@ -877,38 +826,51 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
         return _openLaundryRoom.apply(this, arguments);
       }
       return openLaundryRoom;
-    }() // 获取数据库中的标签页
+    }() // 获取存储的标签页
   }, {
     key: "getDatabaseTabs",
     value: function () {
       var _getDatabaseTabs = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee11() {
-        var tabs, _t12;
+        var result, collection, _t10;
         return _regenerator().w(function (_context11) {
           while (1) switch (_context11.p = _context11.n) {
             case 0:
               _context11.p = 0;
               _context11.n = 1;
-              return this.database.init();
+              return chrome.storage.local.get(['latestCollection']);
             case 1:
-              _context11.n = 2;
-              return this.database.getAllTabs();
-            case 2:
-              tabs = _context11.v;
+              result = _context11.v;
+              collection = result.latestCollection;
+              if (!(collection && collection.tabs)) {
+                _context11.n = 2;
+                break;
+              }
               return _context11.a(2, {
                 success: true,
-                tabs: tabs,
-                count: tabs.length
+                tabs: collection.tabs,
+                count: collection.tabs.length
+              });
+            case 2:
+              return _context11.a(2, {
+                success: true,
+                tabs: [],
+                count: 0
               });
             case 3:
-              _context11.p = 3;
-              _t12 = _context11.v;
-              console.error('❌ [BACKGROUND] 获取数据库标签页失败:', _t12);
+              _context11.n = 5;
+              break;
+            case 4:
+              _context11.p = 4;
+              _t10 = _context11.v;
+              console.error('❌ [BACKGROUND] 获取存储标签页失败:', _t10);
               return _context11.a(2, {
                 success: false,
-                error: _t12.message
+                error: _t10.message
               });
+            case 5:
+              return _context11.a(2);
           }
-        }, _callee11, this, [[0, 3]]);
+        }, _callee11, null, [[0, 4]]);
       }));
       function getDatabaseTabs() {
         return _getDatabaseTabs.apply(this, arguments);
@@ -919,54 +881,48 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
     key: "getLatestCollection",
     value: function () {
       var _getLatestCollection = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee12() {
-        var collection, tabs, _t13;
+        var result, collection, _t11;
         return _regenerator().w(function (_context12) {
           while (1) switch (_context12.p = _context12.n) {
             case 0:
               _context12.p = 0;
               _context12.n = 1;
-              return this.database.init();
+              return chrome.storage.local.get(['latestCollection']);
             case 1:
-              _context12.n = 2;
-              return this.database.getLatestCollection();
-            case 2:
-              collection = _context12.v;
+              result = _context12.v;
+              collection = result.latestCollection;
               if (!collection) {
-                _context12.n = 4;
+                _context12.n = 2;
                 break;
               }
-              _context12.n = 3;
-              return this.database.getTabsByCollection(collection.id);
-            case 3:
-              tabs = _context12.v;
               return _context12.a(2, {
                 success: true,
                 collection: collection,
-                tabs: tabs,
-                count: tabs.length
+                tabs: collection.tabs || [],
+                count: collection.tabs ? collection.tabs.length : 0
               });
-            case 4:
+            case 2:
               return _context12.a(2, {
                 success: true,
                 collection: null,
                 tabs: [],
                 count: 0
               });
-            case 5:
-              _context12.n = 7;
+            case 3:
+              _context12.n = 5;
               break;
-            case 6:
-              _context12.p = 6;
-              _t13 = _context12.v;
-              console.error('❌ [BACKGROUND] 获取最新收集记录失败:', _t13);
+            case 4:
+              _context12.p = 4;
+              _t11 = _context12.v;
+              console.error('❌ [BACKGROUND] 获取最新收集记录失败:', _t11);
               return _context12.a(2, {
                 success: false,
-                error: _t13.message
+                error: _t11.message
               });
-            case 7:
+            case 5:
               return _context12.a(2);
           }
-        }, _callee12, this, [[0, 6]]);
+        }, _callee12, null, [[0, 4]]);
       }));
       function getLatestCollection() {
         return _getLatestCollection.apply(this, arguments);
