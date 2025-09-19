@@ -128,6 +128,11 @@
         
         console.log('✅ [SOFTCAT] 软体猫初始化完成！');
         
+        // 显示快捷键提示
+        setTimeout(() => {
+          this.showKeyboardShortcuts();
+        }, 2000);
+        
       } catch (error) {
         console.error('❌ [SOFTCAT] 初始化失败:', error);
         this.showError(error.message);
@@ -970,14 +975,29 @@
     collectAllTabs() {
       console.log('📋 [SOFTCAT] 执行一键收Tab功能');
       
+      // 检查chrome.runtime是否可用
+      if (!chrome.runtime) {
+        console.error('❌ [SOFTCAT] chrome.runtime 不可用');
+        this.showNotification('扩展环境不可用', 'error');
+        return;
+      }
+      
       // 发送消息给background script收集所有tab
       chrome.runtime.sendMessage({ action: 'collectAllTabs' }, (response) => {
+        console.log('📨 [SOFTCAT] 收到background响应:', response);
+        
+        if (chrome.runtime.lastError) {
+          console.error('❌ [SOFTCAT] chrome.runtime错误:', chrome.runtime.lastError);
+          this.showNotification('通信失败: ' + chrome.runtime.lastError.message, 'error');
+          return;
+        }
+        
         if (response && response.success) {
           console.log('✅ [SOFTCAT] 一键收Tab成功:', response);
           this.showNotification(`已收集 ${response.count} 个标签页，关闭了 ${response.closedCount} 个，正在打开洗衣房...`);
         } else {
           console.error('❌ [SOFTCAT] 一键收Tab失败:', response?.error);
-          this.showNotification('一键收Tab失败', 'error');
+          this.showNotification('一键收Tab失败: ' + (response?.error || '未知错误'), 'error');
         }
       });
     }
@@ -986,13 +1006,29 @@
     openLaundryRoom() {
       console.log('🏠 [SOFTCAT] 打开洗衣房');
       
+      // 检查chrome.runtime是否可用
+      if (!chrome.runtime) {
+        console.error('❌ [SOFTCAT] chrome.runtime 不可用');
+        this.showNotification('扩展环境不可用', 'error');
+        return;
+      }
+      
       // 发送消息给background script打开洗衣房页面
       chrome.runtime.sendMessage({ action: 'openLaundryRoom' }, (response) => {
+        console.log('📨 [SOFTCAT] 收到background响应:', response);
+        
+        if (chrome.runtime.lastError) {
+          console.error('❌ [SOFTCAT] chrome.runtime错误:', chrome.runtime.lastError);
+          this.showNotification('通信失败: ' + chrome.runtime.lastError.message, 'error');
+          return;
+        }
+        
         if (response && response.success) {
           console.log('✅ [SOFTCAT] 洗衣房已打开');
+          this.showNotification('洗衣房已打开');
         } else {
           console.error('❌ [SOFTCAT] 洗衣房打开失败:', response?.error);
-          this.showNotification('洗衣房打开失败', 'error');
+          this.showNotification('洗衣房打开失败: ' + (response?.error || '未知错误'), 'error');
         }
       });
     }
@@ -1001,6 +1037,18 @@
     openSearchHistory() {
       console.log('🔍 [SOFTCAT] 打开查询记录（功能开发中）');
       this.showNotification('查询记录功能开发中...', 'info');
+    }
+
+    // 显示快捷键提示
+    showKeyboardShortcuts() {
+      console.log('⌨️ [SOFTCAT] 快捷键提示:');
+      console.log('  Ctrl+1: 一键收Tab');
+      console.log('  Ctrl+2: 打开洗衣房');
+      console.log('  Ctrl+3: 打开查询记录');
+      console.log('  V: 切换调试模式');
+      console.log('  R: 重置软体猫形状');
+      
+      this.showNotification('快捷键: Ctrl+1收Tab, Ctrl+2洗衣房, Ctrl+3查询', 'info');
     }
 
     // 显示通知
@@ -1192,10 +1240,32 @@
     }
 
     handleKeyDown(e) {
-      if (e.key.toLowerCase() === 'v') {
-        this.toggleDebugMode();
-      } else if (e.key.toLowerCase() === 'r') {
-        this.resetCatShape();
+      // 检查是否按下了Ctrl键
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case '1':
+            e.preventDefault();
+            console.log('⌨️ [SOFTCAT] 快捷键: Ctrl+1 - 一键收Tab');
+            this.collectAllTabs();
+            break;
+          case '2':
+            e.preventDefault();
+            console.log('⌨️ [SOFTCAT] 快捷键: Ctrl+2 - 打开洗衣房');
+            this.openLaundryRoom();
+            break;
+          case '3':
+            e.preventDefault();
+            console.log('⌨️ [SOFTCAT] 快捷键: Ctrl+3 - 打开查询记录');
+            this.openSearchHistory();
+            break;
+        }
+      } else {
+        // 原有的单键快捷键
+        if (e.key.toLowerCase() === 'v') {
+          this.toggleDebugMode();
+        } else if (e.key.toLowerCase() === 'r') {
+          this.resetCatShape();
+        }
       }
     }
 
