@@ -547,7 +547,7 @@
       p.rotate(this.machine.angle);
       
       if (this.images.washingMachine && this.images.washingMachine.width > 0) {
-        const scale = this.CONFIG.machine.physicsScale;
+        const scale = this.CONFIG.machine.physicsScale * 1.3; // 放大1.3倍
         p.imageMode(p.CENTER);
         p.image(this.images.washingMachine, 0, 0, 
           this.CONFIG.machine.baseWidth * scale, 
@@ -575,20 +575,45 @@
       
       p.push();
       
+      // 计算软体猫的边界框
+      const bodies = this.softBody.bodies;
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      
+      for (let body of bodies) {
+        minX = Math.min(minX, body.position.x);
+        maxX = Math.max(maxX, body.position.x);
+        minY = Math.min(minY, body.position.y);
+        maxY = Math.max(maxY, body.position.y);
+      }
+      
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const width = maxX - minX;
+      const height = maxY - minY;
+      
+      // 绘制单个猫图像覆盖整个软体
       if (this.images.cat && this.images.cat.width > 0) {
         p.imageMode(p.CENTER);
-        for (let body of this.softBody.bodies) {
-          p.image(this.images.cat, body.position.x, body.position.y, 
-            this.CONFIG.cat.particleRadius * 2, 
-            this.CONFIG.cat.particleRadius * 2);
-        }
+        p.image(this.images.cat, centerX, centerY, width, height);
       } else {
-        // 备用绘制
-        p.fill(255, 107, 107, 200);
+        // 备用绘制 - 绘制软体轮廓
+        p.fill(255, 107, 107, 150);
         p.stroke(255, 107, 107);
-        p.strokeWeight(1);
+        p.strokeWeight(2);
+        p.noFill();
         
-        for (let body of this.softBody.bodies) {
+        // 绘制软体边界
+        p.beginShape();
+        for (let body of bodies) {
+          p.vertex(body.position.x, body.position.y);
+        }
+        p.endShape(p.CLOSE);
+        
+        // 绘制粒子点（调试用）
+        p.fill(255, 107, 107, 200);
+        p.noStroke();
+        for (let body of bodies) {
           p.ellipse(body.position.x, body.position.y, this.CONFIG.cat.particleRadius * 2);
         }
       }
@@ -667,6 +692,10 @@
       if (this.isPointInMachine(mouseX, mouseY)) {
         this.startDragging(mouseX, mouseY);
         e.preventDefault();
+      } else if (this.isPointInSoftCat(mouseX, mouseY)) {
+        // 点击软体猫时也启动拖拽
+        this.startDragging(mouseX, mouseY);
+        e.preventDefault();
       }
     }
 
@@ -704,6 +733,25 @@
              x <= this.machine.position.x + halfWidth &&
              y >= this.machine.position.y - halfHeight &&
              y <= this.machine.position.y + halfHeight;
+    }
+
+    // 检查点击是否在软体猫上
+    isPointInSoftCat(x, y) {
+      if (!this.softBody || !this.softBody.bodies) return false;
+      
+      // 检查是否点击在软体猫的边界框内
+      const bodies = this.softBody.bodies;
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      
+      for (let body of bodies) {
+        minX = Math.min(minX, body.position.x);
+        maxX = Math.max(maxX, body.position.x);
+        minY = Math.min(minY, body.position.y);
+        maxY = Math.max(maxY, body.position.y);
+      }
+      
+      return x >= minX && x <= maxX && y >= minY && y <= maxY;
     }
 
     startDragging(mouseX, mouseY) {
