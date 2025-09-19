@@ -791,13 +791,14 @@
       // 移除旧的选项菜单交互区域
       this.interactionZones = this.interactionZones.filter(zone => zone.type !== 'options');
       
-      // 添加新的选项菜单交互区域
+      // 添加新的选项菜单交互区域，增加一些padding让点击更容易
+      const padding = 5;
       this.interactionZones.push({
         type: 'options',
-        x: x,
-        y: y,
-        width: width,
-        height: height
+        x: x - padding,
+        y: y - padding,
+        width: width + padding * 2,
+        height: height + padding * 2
       });
     }
 
@@ -849,41 +850,55 @@
       if (y < 0) y = 10;
       if (y + totalHeight > p.height) y = p.height - totalHeight - 10;
       
+      // 存储实际位置，供点击检测使用
+      this.actualOptionsX = x;
+      this.actualOptionsY = y;
+      this.actualOptionsWidth = optionsWidth;
+      this.actualOptionsHeight = totalHeight;
+      
       // 更新选项菜单的交互区域
       this.updateOptionsInteractionZone(x, y, optionsWidth, totalHeight);
       
       // 绘制背景
-      p.fill(255, 255, 255, 240);
+      p.fill(255, 255, 255, 250);
       p.stroke(200, 200, 200);
-      p.strokeWeight(1);
+      p.strokeWeight(2);
       p.rect(x, y, optionsWidth, totalHeight, 8);
       
       // 绘制选项
       this.clickOptions.forEach((option, index) => {
         const optionY = y + index * (optionHeight + spacing);
         
-        // 悬停效果
-        const mouseInOption = p.mouseX >= x && p.mouseX <= x + optionsWidth &&
-                             p.mouseY >= optionY && p.mouseY <= optionY + optionHeight;
+        // 悬停效果 - 使用实际鼠标位置
+        const rect = document.getElementById('softcat-canvas')?.getBoundingClientRect();
+        let realMouseX = 0, realMouseY = 0;
+        
+        if (rect && this.lastMouseEvent) {
+          realMouseX = this.lastMouseEvent.clientX - rect.left;
+          realMouseY = this.lastMouseEvent.clientY - rect.top;
+        }
+        
+        const mouseInOption = realMouseX >= x && realMouseX <= x + optionsWidth &&
+                             realMouseY >= optionY && realMouseY <= optionY + optionHeight;
         
         if (mouseInOption) {
-          p.fill(240, 240, 240, 240);
+          p.fill(230, 240, 255, 250);
         } else {
-          p.fill(255, 255, 255, 240);
+          p.fill(255, 255, 255, 250);
         }
         
         p.noStroke();
-        p.rect(x, optionY, optionsWidth, optionHeight, 8);
+        p.rect(x, optionY, optionsWidth, optionHeight, 6);
         
         // 绘制图标和文字
         p.fill(100, 100, 100);
-        p.textSize(16);
+        p.textSize(18);
         p.textAlign(p.LEFT, p.CENTER);
-        p.text(option.icon, x + 12, optionY + optionHeight / 2);
+        p.text(option.icon, x + 15, optionY + optionHeight / 2);
         
         p.fill(60, 60, 60);
         p.textSize(14);
-        p.text(option.text, x + 40, optionY + optionHeight / 2);
+        p.text(option.text, x + 45, optionY + optionHeight / 2);
       });
       
       p.pop();
@@ -891,29 +906,31 @@
 
     // 处理点击选项点击
     handleClickOptionClick(mouseX, mouseY) {
-      if (!this.showClickOptions) return false;
+      if (!this.showClickOptions || !this.actualOptionsX) return false;
       
-      const optionsWidth = 200;
       const optionHeight = 40;
       const spacing = 8;
-      const totalHeight = this.clickOptions.length * (optionHeight + spacing) - spacing;
-      
-      // 计算实际位置（与drawClickOptions中的逻辑保持一致）
-      let x = this.clickOptionsX + 20;
-      let y = this.clickOptionsY - totalHeight / 2;
-      
-      if (x + optionsWidth > window.innerWidth) x = this.clickOptionsX - optionsWidth - 20;
-      if (y < 0) y = 10;
-      if (y + totalHeight > window.innerHeight) y = window.innerHeight - totalHeight - 10;
       
       console.log('🎯 [SOFTCAT] 检测选项点击:', {
         mouseX, mouseY, 
-        optionsX: x, optionsY: y, 
-        optionsWidth, totalHeight
+        actualX: this.actualOptionsX, 
+        actualY: this.actualOptionsY,
+        actualWidth: this.actualOptionsWidth,
+        actualHeight: this.actualOptionsHeight
       });
+      
+      // 使用缓存的实际位置
+      const x = this.actualOptionsX;
+      const y = this.actualOptionsY;
+      const optionsWidth = this.actualOptionsWidth;
       
       for (let i = 0; i < this.clickOptions.length; i++) {
         const optionY = y + i * (optionHeight + spacing);
+        
+        console.log(`检查选项 ${i}:`, {
+          optionBounds: { x, y: optionY, width: optionsWidth, height: optionHeight },
+          mousePos: { mouseX, mouseY }
+        });
         
         if (mouseX >= x && mouseX <= x + optionsWidth &&
             mouseY >= optionY && mouseY <= optionY + optionHeight) {
@@ -1040,6 +1057,9 @@
       const canvas = document.getElementById('softcat-canvas');
       if (!canvas) return;
       
+      // 保存鼠标事件
+      this.lastMouseEvent = e;
+      
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
@@ -1077,6 +1097,9 @@
       const canvas = document.getElementById('softcat-canvas');
       if (!canvas) return;
       
+      // 保存鼠标事件，供绘制时使用
+      this.lastMouseEvent = e;
+      
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
@@ -1094,21 +1117,42 @@
         // 如果是选项菜单区域，处理选项点击
         if (zone.type === 'options') {
           console.log('🎯 [SOFTCAT] 检测到选项菜单区域点击');
-          if (this.handleClickOptionClick(mouseX, mouseY)) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
+          // 给一个小延迟，确保绘制完成
+          setTimeout(() => {
+            if (this.handleClickOptionClick(mouseX, mouseY)) {
+              console.log('✅ [SOFTCAT] 选项点击处理成功');
+            } else {
+              console.log('⚠️ [SOFTCAT] 选项点击处理失败');
+            }
+          }, 10);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
         }
         // 如果是软体猫区域，切换选项显示状态
         else if (zone.type === 'softcat') {
-          this.toggleClickOptions(mouseX, mouseY);
+          // 如果选项菜单已显示，先检查是否点击了选项
+          if (this.showClickOptions) {
+            setTimeout(() => {
+              if (!this.handleClickOptionClick(mouseX, mouseY)) {
+                // 如果没有点击选项，则切换菜单状态
+                this.toggleClickOptions(mouseX, mouseY);
+              }
+            }, 10);
+          } else {
+            // 如果选项菜单未显示，直接显示
+            this.toggleClickOptions(mouseX, mouseY);
+          }
           e.preventDefault();
           e.stopPropagation();
           return;
         }
         // 如果是洗衣机区域，开始拖拽
         else if (zone.type === 'machine') {
+          // 如果选项菜单显示，先关闭
+          if (this.showClickOptions) {
+            this.showClickOptions = false;
+          }
           this.startDragging(mouseX, mouseY);
           canvas.style.cursor = 'grabbing';
           e.preventDefault();
