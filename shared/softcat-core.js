@@ -1240,8 +1240,16 @@
     }
 
     handleKeyDown(e) {
+      console.log('⌨️ [SOFTCAT] 键盘事件:', {
+        key: e.key,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        code: e.code
+      });
+      
       // 检查是否按下了Ctrl键
       if (e.ctrlKey || e.metaKey) {
+        console.log('⌨️ [SOFTCAT] 检测到Ctrl/Cmd键');
         switch (e.key) {
           case '1':
             e.preventDefault();
@@ -1258,6 +1266,8 @@
             console.log('⌨️ [SOFTCAT] 快捷键: Ctrl+3 - 打开查询记录');
             this.openSearchHistory();
             break;
+          default:
+            console.log('⌨️ [SOFTCAT] 未知的Ctrl组合键:', e.key);
         }
       } else {
         // 原有的单键快捷键
