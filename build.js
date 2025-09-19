@@ -11,15 +11,6 @@ if (!fs.existsSync('dist')) {
   fs.mkdirSync('dist');
 }
 
-// 构建PIXI.js
-console.log('📦 构建PIXI.js...');
-try {
-  execSync('npx esbuild src/vendor/pixi-entry.ts --bundle --format=iife --global-name=PIXI --outfile=dist/libs/pixi.iife.js', { stdio: 'inherit' });
-  console.log('✅ PIXI.js 构建完成');
-} catch (error) {
-  console.error('❌ PIXI.js 构建失败:', error.message);
-  process.exit(1);
-}
 
 // 构建Matter.js
 console.log('📦 构建Matter.js...');
@@ -70,7 +61,6 @@ console.log('  - dist/content.iife.js');
 console.log('  - dist/popup.html');
 console.log('  - dist/popup.css');
 console.log('  - dist/popup.js');
-console.log('  - dist/libs/pixi.iife.js');
 console.log('  - dist/libs/matter.iife.js');
 console.log('  - dist/shared/softcat-core.js');
 console.log('');

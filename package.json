@@ -13,7 +13,6 @@
     "build:backend": "cd backend && npm run build",
     "build:extension": "webpack --mode production",
     "build:mv3": "node build.js",
-    "build:pixi": "npx esbuild src/vendor/pixi-entry.ts --bundle --format=iife --global-name=PIXI --outfile=dist/libs/pixi.iife.js",
     "build:matter": "npx esbuild src/vendor/matter-entry.ts --bundle --format=iife --global-name=Matter --outfile=dist/libs/matter.iife.js",
     "build:content": "npx esbuild src/content.ts --bundle --format=iife --outfile=dist/content.iife.js",
     "package": "npm run build && node scripts/package-extension.js",
@@ -28,7 +27,6 @@
     "desktop-pet",
     "soft-body",
     "physics",
-    "pixi.js",
     "matter.js",
     "browser-extension"
   ],
@@ -58,8 +56,7 @@
   },
   "dependencies": {
     "matter-js": "^0.19.0",
-    "p5": "^2.0.5",
-    "pixi.js": "^7.4.3"
+    "p5": "^2.0.5"
   },
   "workspaces": [
     "frontend",

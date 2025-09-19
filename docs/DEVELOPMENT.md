@@ -168,7 +168,7 @@ npm run publish:firefox   # Firefox Add-ons
 - [Chrome Extension 开发文档](https://developer.chrome.com/docs/extensions/)
 - [Firefox Extension 开发文档](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
 - [Matter.js 文档](https://brm.io/matter-js/)
-- [Pixi.js 文档](https://pixijs.download/)
+- [p5.js 文档](https://p5js.org/reference/)
 
 ## 🤝 贡献指南
 

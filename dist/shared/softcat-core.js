@@ -1,5 +1,5 @@
-// shared/softcat-core.js - 修复版本
-// 改进库文件检测和初始化逻辑
+// shared/softcat-core-p5.js - p5.js版本
+// 使用p5.js替代PIXI.js，改进库文件检测和初始化逻辑
 
 (function() {
   'use strict';
@@ -10,7 +10,7 @@
     return;
   }
 
-  console.log('开始初始化软体猫...');
+  console.log('🐱 [SOFTCAT] 开始初始化软体猫...');
 
   // 软体猫初始化器
   const SoftCatInitializer = {
@@ -18,19 +18,19 @@
     checkInterval: 200, // 检查间隔 200ms
     
     async waitForLibraries() {
-      console.log('等待库文件加载...');
+      console.log('⏳ [SOFTCAT] 等待库文件加载...');
       
       return new Promise((resolve, reject) => {
         let waitTime = 0;
         
         const checkLibraries = () => {
-          const pixiLoaded = typeof PIXI !== 'undefined';
+          const p5Loaded = typeof p5 !== 'undefined';
           const matterLoaded = typeof Matter !== 'undefined';
           
-          console.log(`库文件检查 - PIXI: ${pixiLoaded}, Matter: ${matterLoaded}`);
+          console.log(`🔍 [SOFTCAT] 库文件检查 - p5.js: ${p5Loaded}, Matter.js: ${matterLoaded}`);
           
-          if (pixiLoaded && matterLoaded) {
-            console.log('所有库文件已加载，开始初始化软体猫');
+          if (p5Loaded && matterLoaded) {
+            console.log('🎉 [SOFTCAT] 所有库文件已加载，开始初始化软体猫');
             resolve();
             return;
           }
@@ -55,19 +55,22 @@
         
         // 标记为已加载
         window.SoftCatLoaded = true;
+        console.log('✅ [SOFTCAT] 软体猫已标记为加载状态');
         
         // 初始化软体猫
         await this.initSoftCat();
         
-        console.log('软体猫初始化完成！');
+        console.log('🎉 [SOFTCAT] 软体猫初始化完成！');
         
       } catch (error) {
-        console.error('软体猫初始化失败:', error);
+        console.error('❌ [SOFTCAT] 软体猫初始化失败:', error);
         this.showError(error.message);
       }
     },
     
     async initSoftCat() {
+      console.log('🎯 [SOFTCAT] 开始初始化软体猫系统...');
+      
       // 创建软体猫容器
       this.createContainer();
       
@@ -102,13 +105,13 @@
       canvas.style.cssText = `
         width: 100%;
         height: 100%;
-        pointer-events: auto;
+        pointer-events: none;
       `;
 
       container.appendChild(canvas);
       document.body.appendChild(container);
 
-      console.log('软体猫容器已创建');
+      console.log('✅ [SOFTCAT] 软体猫容器已创建');
       return container;
     },
     
@@ -151,7 +154,7 @@
       };
 
       // 全局变量
-      let app, engine, runner, render;
+      let engine, runner, render;
       let machine, washingMachineSprite;
       let softBody, pinConstraints = [];
       let isDraggingMachine = false;
@@ -160,19 +163,279 @@
       let initialSoftBodyPositions = [];
       let initialTailPositions = [];
       let showVisualization = false; // 默认关闭调试模式
+      let p5Instance = null;
+      
+      // 图片资源
+      let washingMachineImg, catImg, catBodyImg;
 
-      // 初始化PIXI应用
-      function initPixi() {
+      // 加载图片资源
+      function loadImages(p) {
+        console.log('🖼️ [SOFTCAT] 开始加载图片资源...');
+        
+        // 获取扩展URL
+        const extensionUrl = chrome.runtime.getURL('');
+        console.log('🔗 [SOFTCAT] 扩展URL:', extensionUrl);
+        
+        const washingMachineUrl = extensionUrl + 'assets/images/washing_machine.png';
+        const catUrl = extensionUrl + 'assets/images/cat.png';
+        const catBodyUrl = extensionUrl + 'assets/images/cat_body.png';
+        
+        console.log('🖼️ [SOFTCAT] 洗衣机图片URL:', washingMachineUrl);
+        console.log('🖼️ [SOFTCAT] 猫图片URL:', catUrl);
+        console.log('🖼️ [SOFTCAT] 猫身体图片URL:', catBodyUrl);
+        
+        washingMachineImg = p.loadImage(washingMachineUrl, 
+          (img) => {
+            console.log('✅ [SOFTCAT] 洗衣机图片加载成功:', img.width, 'x', img.height);
+            console.log('🖼️ [SOFTCAT] 洗衣机图片对象:', washingMachineImg);
+          },
+          (err) => {
+            console.error('❌ [SOFTCAT] 洗衣机图片加载失败:', err);
+            console.error('❌ [SOFTCAT] 洗衣机图片URL:', washingMachineUrl);
+          }
+        );
+        catImg = p.loadImage(catUrl,
+          (img) => {
+            console.log('✅ [SOFTCAT] 猫图片加载成功:', img.width, 'x', img.height);
+            console.log('🖼️ [SOFTCAT] 猫图片对象:', catImg);
+          },
+          (err) => {
+            console.error('❌ [SOFTCAT] 猫图片加载失败:', err);
+            console.error('❌ [SOFTCAT] 猫图片URL:', catUrl);
+          }
+        );
+        catBodyImg = p.loadImage(catBodyUrl,
+          (img) => {
+            console.log('✅ [SOFTCAT] 猫身体图片加载成功:', img.width, 'x', img.height);
+            console.log('🖼️ [SOFTCAT] 猫身体图片对象:', catBodyImg);
+          },
+          (err) => {
+            console.error('❌ [SOFTCAT] 猫身体图片加载失败:', err);
+            console.error('❌ [SOFTCAT] 猫身体图片URL:', catBodyUrl);
+          }
+        );
+        
+        console.log('✅ [SOFTCAT] 图片资源加载完成');
+      }
+
+      // 初始化p5.js
+      function initP5() {
+        console.log('🎨 [SOFTCAT] 开始初始化p5.js...');
+        console.log('🎨 [SOFTCAT] p5对象是否存在:', typeof p5);
+        
         const canvas = document.getElementById('softcat-canvas');
-        app = new PIXI.Application({
-          view: canvas,
-          width: window.innerWidth,
-          height: window.innerHeight,
-          backgroundAlpha: 0,
-          antialias: true,
-          transparent: true
-        });
-        console.log('PIXI应用已初始化');
+        console.log('🎨 [SOFTCAT] 获取画布元素:', canvas);
+        
+        if (!canvas) {
+          console.error('❌ [SOFTCAT] 找不到画布元素！');
+          return;
+        }
+        
+        if (typeof p5 === 'undefined') {
+          console.error('❌ [SOFTCAT] p5.js库未加载！');
+          return;
+        }
+        
+        console.log('🎨 [SOFTCAT] 创建p5实例...');
+        try {
+          p5Instance = new p5((p) => {
+          p.setup = () => {
+            console.log('🎨 [SOFTCAT] p5.js setup 开始');
+            console.log('🎨 [SOFTCAT] 窗口尺寸:', window.innerWidth, 'x', window.innerHeight);
+            
+            p.createCanvas(window.innerWidth, window.innerHeight);
+            p.background(0, 0, 0, 0); // 透明背景
+            
+            console.log('🎨 [SOFTCAT] 画布尺寸:', p.width, 'x', p.height);
+            console.log('🎨 [SOFTCAT] 画布实际尺寸:', canvas.width, 'x', canvas.height);
+            console.log('🎨 [SOFTCAT] 画布位置:', canvas.offsetLeft, canvas.offsetTop);
+            console.log('🎨 [SOFTCAT] 画布样式:', canvas.style.cssText);
+            console.log('🎨 [SOFTCAT] 画布父元素:', canvas.parentElement);
+            console.log('🎨 [SOFTCAT] 画布可见性:', canvas.offsetWidth, 'x', canvas.offsetHeight);
+            
+          // 强制设置画布样式确保可见
+          canvas.style.position = 'fixed';
+          canvas.style.top = '0';
+          canvas.style.left = '0';
+          canvas.style.zIndex = '2147483647'; // 最大z-index值
+          canvas.style.pointerEvents = 'none';
+          canvas.style.backgroundColor = 'rgba(255, 0, 0, 0.3)'; // 更明显的红色背景
+          canvas.style.width = '100vw';
+          canvas.style.height = '100vh';
+            
+            console.log('🎨 [SOFTCAT] 画布强制样式设置完成');
+            console.log('🎨 [SOFTCAT] 画布最终样式:', canvas.style.cssText);
+            
+            // 加载图片资源
+            loadImages(p);
+            
+            console.log('✅ [SOFTCAT] p5.js应用已初始化');
+          };
+          
+          p.draw = () => {
+            // 每10帧输出一次调试信息
+            if (p.frameCount % 10 === 0) {
+              console.log('🎨 [SOFTCAT] draw函数执行中, 帧数:', p.frameCount, '画布尺寸:', p.width, 'x', p.height);
+            }
+            
+            p.background(255, 0, 0, 50); // 半透明红色背景，确保画布可见
+            
+            // 绘制洗衣机
+            if (machine) {
+              console.log('🏠 [SOFTCAT] 绘制洗衣机, 位置:', machine.position.x, machine.position.y);
+              drawWashingMachine(p);
+            } else {
+              console.log('⚠️ [SOFTCAT] 洗衣机对象不存在');
+            }
+            
+            // 绘制软体猫
+            if (softBody && softBody.bodies) {
+              console.log('🐱 [SOFTCAT] 绘制软体猫, 粒子数量:', softBody.bodies.length);
+              drawSoftCat(p);
+            } else {
+              console.log('⚠️ [SOFTCAT] 软体猫对象不存在或没有粒子');
+            }
+            
+            // 洗衣机震动效果
+            if (machine && softBody) {
+              const t = p.millis() * 0.001;
+              const bottomRowStart = (CONFIG.cat.rows - 1) * CONFIG.cat.cols;
+              const centerStart = Math.floor((CONFIG.cat.cols - 4) / 2);
+              
+              for (let i = 0; i < 4; i++) {
+                const index = bottomRowStart + centerStart + i;
+                Body.applyForce(softBody.bodies[index], softBody.bodies[index].position, { 
+                  x: Math.sin(t * 3 + i) * 0.00005,
+                  y: Math.cos(t * 2 + i) * 0.00002
+                });
+              }
+            }
+            
+            // 测试绘制 - 放在最后确保不被覆盖
+            console.log('🎨 [SOFTCAT] 开始绘制测试内容...');
+            p.noStroke();
+            
+            // 绘制超大号彩色圆圈，确保在屏幕中央
+            p.fill(255, 255, 0, 255); // 黄色，完全不透明
+            p.ellipse(200, 200, 200, 200);
+            
+            p.fill(0, 255, 0, 255); // 绿色，完全不透明
+            p.ellipse(400, 200, 200, 200);
+            
+            p.fill(0, 0, 255, 255); // 蓝色，完全不透明
+            p.ellipse(600, 200, 200, 200);
+            
+            // 绘制文字测试 - 更大更明显
+            p.fill(255, 255, 255);
+            p.textSize(64);
+            p.textAlign(p.LEFT);
+            p.text('SOFTCAT TEST', 100, 400);
+            
+            // 绘制边框测试 - 覆盖整个屏幕
+            p.stroke(255, 255, 255);
+            p.strokeWeight(10);
+            p.noFill();
+            p.rect(10, 10, p.width - 20, p.height - 20);
+            
+            // 绘制对角线测试
+            p.stroke(255, 0, 255);
+            p.strokeWeight(5);
+            p.line(0, 0, p.width, p.height);
+            p.line(p.width, 0, 0, p.height);
+            
+            console.log('🎨 [SOFTCAT] 测试内容绘制完成');
+          };
+        }, canvas);
+        console.log('✅ [SOFTCAT] p5实例创建成功:', p5Instance);
+        
+        // 延迟检查画布是否真的在DOM中
+        setTimeout(() => {
+          const canvasInDOM = document.getElementById('softcat-canvas');
+          console.log('🔍 [SOFTCAT] 延迟检查画布:', canvasInDOM);
+          if (canvasInDOM) {
+            console.log('🔍 [SOFTCAT] 画布在DOM中，位置:', canvasInDOM.getBoundingClientRect());
+            console.log('🔍 [SOFTCAT] 画布计算样式:', window.getComputedStyle(canvasInDOM));
+          } else {
+            console.error('❌ [SOFTCAT] 画布不在DOM中！');
+          }
+        }, 1000);
+        
+        } catch (error) {
+          console.error('❌ [SOFTCAT] p5实例创建失败:', error);
+        }
+      }
+
+      // 绘制洗衣机
+      function drawWashingMachine(p) {
+        p.push();
+        p.translate(machine.position.x, machine.position.y);
+        p.rotate(machine.angle);
+        
+        // 使用图片绘制洗衣机
+        if (washingMachineImg && washingMachineImg.width > 0) {
+          const scale = CONFIG.machine.physicsScale;
+          p.imageMode(p.CENTER);
+          p.image(washingMachineImg, 0, 0, 
+            CONFIG.machine.baseWidth * scale, 
+            CONFIG.machine.baseHeight * scale);
+        } else {
+          // 备用绘制（如果图片未加载）
+          p.fill(200, 200, 200);
+          p.stroke(150, 150, 150);
+          p.strokeWeight(2);
+          p.rectMode(p.CENTER);
+          p.rect(0, 0, CONFIG.machine.baseWidth * CONFIG.machine.physicsScale, CONFIG.machine.baseHeight * CONFIG.machine.physicsScale, 10);
+          
+          // 洗衣机门
+          p.fill(100, 100, 100);
+          p.ellipse(0, -CONFIG.machine.baseHeight * CONFIG.machine.physicsScale * 0.2, 60, 60);
+        }
+        
+        p.pop();
+      }
+
+      // 绘制软体猫
+      function drawSoftCat(p) {
+        if (!softBody || !softBody.bodies) return;
+        
+        p.push();
+        
+        // 使用图片绘制软体猫粒子
+        if (catImg && catImg.width > 0) {
+          p.imageMode(p.CENTER);
+          for (let body of softBody.bodies) {
+            p.image(catImg, body.position.x, body.position.y, 
+              CONFIG.cat.particleRadius * 2, 
+              CONFIG.cat.particleRadius * 2);
+          }
+        } else {
+          // 备用绘制（如果图片未加载）
+          p.fill(255, 107, 107, 200);
+          p.stroke(255, 107, 107);
+          p.strokeWeight(1);
+          
+          for (let body of softBody.bodies) {
+            p.ellipse(body.position.x, body.position.y, CONFIG.cat.particleRadius * 2);
+          }
+        }
+        
+        // 绘制约束线（调试模式）
+        if (showVisualization) {
+          p.stroke(255, 255, 0, 100);
+          p.strokeWeight(1);
+          p.noFill();
+          
+          for (let constraint of softBody.constraints) {
+            if (constraint.bodyA && constraint.bodyB) {
+              p.line(
+                constraint.bodyA.position.x, constraint.bodyA.position.y,
+                constraint.bodyB.position.x, constraint.bodyB.position.y
+              );
+            }
+          }
+        }
+        
+        p.pop();
       }
 
       // 初始化物理引擎
@@ -191,7 +454,8 @@
         });
         
         Runner.run(runner, engine);
-        console.log('物理引擎已初始化');
+        console.log('✅ [SOFTCAT] 物理引擎已初始化');
+        console.log('🔧 [SOFTCAT] 引擎状态:', engine.world.bodies.length, '个刚体');
       }
 
       // 创建调试渲染器
@@ -228,7 +492,7 @@
         render.canvas.style.display = 'none'; // 默认隐藏
         
         Render.run(render);
-        console.log('调试渲染器已初始化');
+        console.log('✅ [SOFTCAT] 调试渲染器已初始化');
       }
 
       // 位置计算函数
@@ -274,25 +538,6 @@
         World.add(engine.world, machine);
       }
 
-      // 创建洗衣机精灵（使用内置纹理）
-      function createWashingMachineSprite() {
-        // 创建简单的矩形纹理代替图片
-        const graphics = new PIXI.Graphics();
-        graphics.beginFill(0xCCCCCC);
-        graphics.drawRoundedRect(0, 0, CONFIG.machine.baseWidth, CONFIG.machine.baseHeight, 10);
-        graphics.beginFill(0x666666);
-        graphics.drawCircle(CONFIG.machine.baseWidth / 2, CONFIG.machine.baseHeight / 3, 30);
-        graphics.endFill();
-        
-        const texture = app.renderer.generateTexture(graphics);
-        washingMachineSprite = new PIXI.Sprite(texture);
-        washingMachineSprite.anchor.set(0.5, 0.5);
-        washingMachineSprite.scale.set(CONFIG.machine.spriteScale);
-        washingMachineSprite.x = machine.position.x;
-        washingMachineSprite.y = machine.position.y;
-        app.stage.addChild(washingMachineSprite);
-      }
-
       // 创建软体
       function createSoftBody() {
         const originPos = getCatOriginPosition();
@@ -328,6 +573,8 @@
         });
         
         World.add(engine.world, softBody);
+        console.log('🐱 [SOFTCAT] 软体猫创建完成, 粒子数量:', softBody.bodies.length);
+        console.log('🐱 [SOFTCAT] 软体猫位置:', originPos.x, originPos.y);
       }
 
       // 创建约束
@@ -389,41 +636,6 @@
         }
       }
 
-      // 创建猫的网格纹理
-      function createCatMesh() {
-        // 创建简单的猫形纹理
-        const graphics = new PIXI.Graphics();
-        graphics.beginFill(0xFF6B6B, 0.8);
-        graphics.drawEllipse(0, 0, 200, 150);
-        graphics.endFill();
-        
-        const tex = app.renderer.generateTexture(graphics);
-        const verts = new Float32Array(CONFIG.cat.cols * CONFIG.cat.rows * 2);
-        const uvs = new Float32Array(CONFIG.cat.cols * CONFIG.cat.rows * 2);
-        const indices = [];
-        
-        for (let y = 0; y < CONFIG.cat.rows; y++) {
-          for (let x = 0; x < CONFIG.cat.cols; x++) {
-            const idx = y * CONFIG.cat.cols + x;
-            verts[idx * 2] = softBody.bodies[idx].position.x;
-            verts[idx * 2 + 1] = softBody.bodies[idx].position.y;
-            uvs[idx * 2] = x / (CONFIG.cat.cols - 1);
-            uvs[idx * 2 + 1] = y / (CONFIG.cat.rows - 1);
-            
-            if (x < CONFIG.cat.cols - 1 && y < CONFIG.cat.rows - 1) {
-              const a = idx, b = idx + 1, c = idx + CONFIG.cat.cols, d = idx + CONFIG.cat.cols + 1;
-              indices.push(a, b, c, b, d, c);
-            }
-          }
-        }
-        
-        const mesh = new PIXI.SimpleMesh(tex, verts, uvs, indices, PIXI.DRAW_MODES.TRIANGLES);
-        mesh.tint = 0xFFFFFF;
-        app.stage.addChild(mesh);
-        
-        return { mesh, verts };
-      }
-
       // 设置事件监听
       function setupEventListeners() {
         const canvas = document.getElementById('softcat-canvas');
@@ -461,11 +673,13 @@
         document.addEventListener('keydown', (e) => {
           if (e.key.toLowerCase() === 'v') {
             showVisualization = !showVisualization;
-            render.canvas.style.display = showVisualization ? 'block' : 'none';
-            console.log('物理可视化:', showVisualization ? '显示' : '隐藏');
+            if (render && render.canvas) {
+              render.canvas.style.display = showVisualization ? 'block' : 'none';
+            }
+            console.log('🔍 [SOFTCAT] 物理可视化:', showVisualization ? '显示' : '隐藏');
           } else if (e.key.toLowerCase() === 'r') {
             resetCatShape();
-            console.log('猫的形状已重置');
+            console.log('🔄 [SOFTCAT] 猫的形状已重置');
           }
         });
       }
@@ -490,8 +704,6 @@
         const deltaY = newY - initialMachinePos.y;
         
         Body.setPosition(machine, { x: newX, y: newY });
-        washingMachineSprite.x = newX;
-        washingMachineSprite.y = newY;
         
         softBody.bodies.forEach((body, index) => {
           const initialPos = initialSoftBodyPositions[index];
@@ -527,30 +739,6 @@
         });
       }
 
-      // 设置渲染循环
-      function setupRenderLoop(catMesh) {
-        app.ticker.add(() => {
-          const bodies = softBody.bodies;
-          for (let i = 0; i < bodies.length; i++) {
-            catMesh.verts[i * 2] = bodies[i].position.x;
-            catMesh.verts[i * 2 + 1] = bodies[i].position.y;
-          }
-          
-          // 洗衣机震动效果
-          const t = performance.now() * 0.001;
-          const bottomRowStart = (CONFIG.cat.rows - 1) * CONFIG.cat.cols;
-          const centerStart = Math.floor((CONFIG.cat.cols - 4) / 2);
-          
-          for (let i = 0; i < 4; i++) {
-            const index = bottomRowStart + centerStart + i;
-            Body.applyForce(softBody.bodies[index], softBody.bodies[index].position, { 
-              x: Math.sin(t * 3 + i) * 0.00005,
-              y: Math.cos(t * 2 + i) * 0.00002
-            });
-          }
-        });
-      }
-
       // 设置鼠标约束
       function setupMouseConstraint() {
         const canvas = document.getElementById('softcat-canvas');
@@ -568,58 +756,59 @@
 
       // 主初始化函数
       function initializeEverything() {
-        console.log('开始初始化软体猫系统...');
+        console.log('🎯 [SOFTCAT] 开始初始化软体猫系统...');
         
         // 初始化渲染和物理引擎
-        initPixi();
+        initP5();
         initMatter();
         initMatterRenderer();
         
         // 创建物理对象
         createMachine();
-        createWashingMachineSprite();
         createSoftBody();
         createTail();
         
         // 延迟创建约束，让软体稳定后再添加
         setTimeout(() => {
           createPinConstraints();
-          console.log('约束已添加，猫应该稳定了');
+          console.log('✅ [SOFTCAT] 约束已添加，猫应该稳定了');
         }, 500);
-        
-        // 创建渲染对象
-        const catMesh = createCatMesh();
         
         // 设置交互
         setupEventListeners();
         setupMouseConstraint();
-        setupRenderLoop(catMesh);
         
-        console.log('软体猫系统初始化完成！');
+        console.log('🎉 [SOFTCAT] 软体猫系统初始化完成！');
       }
 
-      // 启动软体猫
+      // 先初始化所有系统
       initializeEverything();
-
-      // 创建软体猫API
+      
+      // 然后创建软体猫API
       window.SoftCat = {
         start: () => {
           if (!runner) {
             Runner.run(runner, engine);
-            console.log('软体猫已启动');
+            console.log('✅ [SOFTCAT] 软体猫已启动');
           }
         },
         
         stop: () => {
           if (runner) {
             Runner.stop(runner);
-            console.log('软体猫已停止');
+            console.log('⏹️ [SOFTCAT] 软体猫已停止');
           }
           
           // 移除容器
           const container = document.getElementById('softcat-container');
           if (container) {
             container.remove();
+          }
+          
+          // 清理p5实例
+          if (p5Instance) {
+            p5Instance.remove();
+            p5Instance = null;
           }
           
           // 清理全局状态
@@ -632,88 +821,60 @@
           if (render && render.canvas) {
             render.canvas.style.display = showVisualization ? 'block' : 'none';
           }
-          console.log('调试模式:', showVisualization ? '开启' : '关闭');
+          console.log('🔍 [SOFTCAT] 调试模式:', showVisualization ? '开启' : '关闭');
+          return showVisualization;
         },
         
-        resetCat: resetCatShape,
+        resetCat: () => {
+          resetCatShape();
+          console.log('🔄 [SOFTCAT] 猫的形状已重置');
+        },
         
-        isRunning: () => !!runner && runner.enabled,
+        isRunning: () => {
+          return !!runner && !runner.enabled;
+        },
         
-        getStatus: () => ({
-          loaded: window.SoftCatLoaded,
-          running: !!runner && runner.enabled,
-          debugMode: showVisualization,
-          pixiVersion: PIXI.VERSION,
-          matterVersion: Matter.version
-        })
+        getStatus: () => {
+          return {
+            loaded: true,
+            running: !!runner && !runner.enabled,
+            debugMode: showVisualization
+          };
+        }
       };
     },
     
     showError(message) {
+      console.error('❌ [SOFTCAT] 软体猫错误:', message);
+      
+      // 创建错误提示
       const errorDiv = document.createElement('div');
-      errorDiv.id = 'softcat-error';
       errorDiv.style.cssText = `
         position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #ff6b6b;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 0, 0, 0.8);
         color: white;
-        padding: 15px;
-        border-radius: 8px;
-        font-family: Arial, sans-serif;
-        z-index: 999999;
-        max-width: 300px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-family: sans-serif;
+        font-size: 14px;
+        z-index: 1000000;
       `;
-      
-      errorDiv.innerHTML = `
-        <div style="font-weight: bold; margin-bottom: 8px;">🐱 软体猫加载失败</div>
-        <div style="font-size: 14px;">${message}</div>
-        <button onclick="this.parentElement.remove()" 
-                style="margin-top: 10px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
-          关闭
-        </button>
-      `;
-      
+      errorDiv.textContent = `软体猫初始化失败: ${message}`;
       document.body.appendChild(errorDiv);
       
-      // 10秒后自动移除
+      // 3秒后自动移除
       setTimeout(() => {
-        if (errorDiv.parentElement) {
-          errorDiv.remove();
-        }
-      }, 10000);
+        errorDiv.remove();
+      }, 3000);
     }
   };
-
+  
   // 启动初始化
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      SoftCatInitializer.init();
-    });
-  } else {
-    SoftCatInitializer.init();
-  }
-
-  // 监听来自扩展的消息
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'stopSoftCat') {
-        if (window.SoftCat && window.SoftCat.stop) {
-          window.SoftCat.stop();
-          sendResponse({ success: true, message: '软体猫已停止' });
-        } else {
-          sendResponse({ success: false, message: '软体猫未运行' });
-        }
-      } else if (request.action === 'getSoftCatStatus') {
-        if (window.SoftCat && window.SoftCat.getStatus) {
-          sendResponse(window.SoftCat.getStatus());
-        } else {
-          sendResponse({ loaded: false, running: false });
-        }
-      }
-      return true;
-    });
-  }
-
+  SoftCatInitializer.init().catch(error => {
+    console.error('❌ [SOFTCAT] 软体猫初始化器失败:', error);
+  });
+  
 })();

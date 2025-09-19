@@ -1,141 +1,153 @@
-// extension/content/content.js - 修复版本
-// 处理页面级别的消息通信
+// extension/content/content.js - 静态注入版本
+// 作为content script入口，管理软体猫的启动和停止
 
-(function() {
-  'use strict';
+console.log('软体猫 Content Script 已加载');
+
+let softcatRunning = false;
+let softcatInstance = null;
+
+// 等待页面加载完成
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+function init() {
+  console.log('软体猫 Content Script 初始化');
   
-  console.log('软体猫内容脚本已加载');
-  
-  // 监听来自弹窗和后台脚本的消息
+  // 监听来自background script的消息
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('内容脚本收到消息:', request);
+    console.log('收到消息:', request);
     
-    try {
-      switch (request.action) {
-        case 'toggleDebug':
-          handleToggleDebug(sendResponse);
-          break;
-          
-        case 'resetCat':
-          handleResetCat(sendResponse);
-          break;
-          
-        case 'stopSoftCat':
-          handleStopSoftCat(sendResponse);
-          break;
-          
-        case 'getSoftCatStatus':
-          handleGetStatus(sendResponse);
-          break;
-          
-        case 'test':
-          sendResponse({ status: 'content script working', url: window.location.href });
-          break;
-          
-        default:
-          sendResponse({ error: 'Unknown action: ' + request.action });
-      }
-    } catch (error) {
-      console.error('内容脚本处理消息失败:', error);
-      sendResponse({ error: error.message });
+    switch (request.action) {
+      case 'startSoftCat':
+        startSoftCat();
+        sendResponse({ success: true, message: '软体猫启动命令已接收' });
+        break;
+        
+      case 'stopSoftCat':
+        stopSoftCat();
+        sendResponse({ success: true, message: '软体猫停止命令已接收' });
+        break;
+        
+      case 'toggleDebug':
+        toggleDebug();
+        sendResponse({ success: true, message: '调试模式已切换' });
+        break;
+        
+      case 'resetCat':
+        resetCat();
+        sendResponse({ success: true, message: '软体猫已重置' });
+        break;
+        
+      case 'getStatus':
+        sendResponse({ 
+          success: true, 
+          running: softcatRunning,
+          librariesLoaded: checkLibrariesLoaded()
+        });
+        break;
+        
+      default:
+        sendResponse({ success: false, message: '未知操作' });
     }
     
     return true; // 保持消息通道开放
   });
-  
-  // 处理调试模式切换
-  function handleToggleDebug(sendResponse) {
-    if (window.SoftCat && window.SoftCat.toggleDebug) {
-      window.SoftCat.toggleDebug();
-      sendResponse({ success: true, message: '调试模式已切换' });
-    } else {
-      sendResponse({ success: false, error: '软体猫未加载' });
-    }
+}
+
+// 检查库文件是否加载完成
+function checkLibrariesLoaded() {
+  return typeof p5 !== 'undefined' && typeof Matter !== 'undefined';
+}
+
+// 启动软体猫
+function startSoftCat() {
+  if (softcatRunning) {
+    console.log('软体猫已在运行中');
+    return;
   }
   
-  // 处理重置软体猫
-  function handleResetCat(sendResponse) {
-    if (window.SoftCat && window.SoftCat.resetCat) {
-      window.SoftCat.resetCat();
-      sendResponse({ success: true, message: '软体猫已重置' });
-    } else {
-      sendResponse({ success: false, error: '软体猫未加载' });
-    }
+  // 检查库文件是否加载完成
+  if (!checkLibrariesLoaded()) {
+    console.error('库文件未加载完成，无法启动软体猫');
+    return;
   }
   
-  // 处理停止软体猫
-  function handleStopSoftCat(sendResponse) {
-    if (window.SoftCat && window.SoftCat.stop) {
-      window.SoftCat.stop();
-      sendResponse({ success: true, message: '软体猫已停止' });
-    } else {
-      sendResponse({ success: false, error: '软体猫未运行' });
-    }
-  }
-  
-  // 获取软体猫状态
-  function handleGetStatus(sendResponse) {
-    if (window.SoftCat && window.SoftCat.getStatus) {
-      const status = window.SoftCat.getStatus();
-      sendResponse(status);
-    } else {
-      sendResponse({
-        loaded: !!window.SoftCatLoaded,
-        running: false,
-        debugMode: false,
-        error: '软体猫未加载'
-      });
-    }
-  }
-  
-  // 监听页面变化，确保软体猫状态同步
-  let lastUrl = window.location.href;
-  const observer = new MutationObserver(() => {
-    if (window.location.href !== lastUrl) {
-      lastUrl = window.location.href;
-      console.log('页面URL发生变化，重新检查软体猫状态');
-      
-      // 通知后台脚本页面已变化
-      chrome.runtime.sendMessage({
-        action: 'pageChanged',
-        url: window.location.href
-      }).catch(error => {
-        console.log('发送页面变化消息失败:', error);
-      });
-    }
-  });
-  
-  observer.observe(document, {
-    subtree: true,
-    childList: true
-  });
-  
-  // 页面卸载时清理
-  window.addEventListener('beforeunload', () => {
-    observer.disconnect();
+  try {
+    console.log('启动软体猫...');
     
-    if (window.SoftCat && window.SoftCat.stop) {
-      window.SoftCat.stop();
+    // 检查是否已有软体猫实例
+    if (window.SoftCat && typeof window.SoftCat.start === 'function') {
+      window.SoftCat.start();
+      softcatInstance = window.SoftCat;
+      softcatRunning = true;
+      console.log('✅ 软体猫启动成功');
+    } else {
+      console.error('SoftCat 对象未找到或启动函数不存在');
     }
-  });
+  } catch (error) {
+    console.error('启动软体猫失败:', error);
+  }
+}
+
+// 停止软体猫
+function stopSoftCat() {
+  if (!softcatRunning) {
+    console.log('软体猫未在运行');
+    return;
+  }
   
-  // 定期向后台报告状态
-  setInterval(() => {
-    if (window.SoftCat && window.SoftCat.getStatus) {
-      const status = window.SoftCat.getStatus();
-      
-      // 只在状态变化时报告
-      if (window.lastReportedStatus !== JSON.stringify(status)) {
-        chrome.runtime.sendMessage({
-          action: 'statusReport',
-          status: status
-        }).catch(error => {
-          // 忽略连接错误，这很正常
-        });
-        
-        window.lastReportedStatus = JSON.stringify(status);
-      }
+  try {
+    console.log('停止软体猫...');
+    
+    if (softcatInstance && typeof softcatInstance.stop === 'function') {
+      softcatInstance.stop();
     }
-  }, 5000); // 每5秒检查一次
-  
-})();
+    
+    // 清理画布
+    const canvas = document.getElementById('softcat-canvas');
+    if (canvas && canvas.parentNode) {
+      canvas.parentNode.removeChild(canvas);
+    }
+    
+    softcatInstance = null;
+    softcatRunning = false;
+    console.log('✅ 软体猫已停止');
+  } catch (error) {
+    console.error('停止软体猫失败:', error);
+  }
+}
+
+// 切换调试模式
+function toggleDebug() {
+  if (softcatInstance && typeof softcatInstance.toggleDebug === 'function') {
+    softcatInstance.toggleDebug();
+    console.log('调试模式已切换');
+  } else {
+    console.log('软体猫未运行，无法切换调试模式');
+  }
+}
+
+// 重置软体猫
+function resetCat() {
+  if (softcatInstance && typeof softcatInstance.reset === 'function') {
+    softcatInstance.reset();
+    console.log('软体猫已重置');
+  } else {
+    console.log('软体猫未运行，无法重置');
+  }
+}
+
+// 错误处理
+window.addEventListener('error', (e) => {
+  console.error('Content Script 错误:', e.error);
+});
+
+// 页面卸载时清理
+window.addEventListener('beforeunload', () => {
+  if (softcatRunning) {
+    stopSoftCat();
+  }
+});

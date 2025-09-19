@@ -259,3 +259,5 @@ document.head.appendChild(style);
 document.addEventListener('DOMContentLoaded', () => {
   new SoftCatOptions();
 });
+
+

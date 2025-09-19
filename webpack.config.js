@@ -18,11 +18,6 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.tsx?$/,
-        use: 'ts-loader',
-        exclude: /node_modules/
-      },
-      {
         test: /\.js$/,
         exclude: /node_modules/,
         use: {
@@ -44,12 +39,10 @@ module.exports = {
   },
   
   resolve: {
-    extensions: ['.tsx', '.ts', '.js'],
+    extensions: ['.js'],
     alias: {
       '@shared': path.resolve(__dirname, 'shared'),
-      '@extension': path.resolve(__dirname, 'extension'),
-      '@frontend': path.resolve(__dirname, 'frontend/src'),
-      '@backend': path.resolve(__dirname, 'backend')
+      '@extension': path.resolve(__dirname, 'extension')
     }
   },
   
@@ -94,7 +87,9 @@ module.exports = {
   
   devtool: 'source-map',
   
+  mode: 'development', // 强制使用开发模式，避免压缩
   optimization: {
+    minimize: false, // 禁用压缩，保持Chrome API可读
     splitChunks: {
       chunks: 'all',
       cacheGroups: {

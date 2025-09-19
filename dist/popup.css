@@ -206,96 +206,117 @@ body {
 
 kbd {
   display: inline-block;
-  padding: 2px 6px;
-  margin-right: 8px;
-  font-family: 'Courier New', monospace;
+  padding: 3px 6px;
   font-size: 11px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  line-height: 1;
+  color: #444;
+  background-color: #f7f7f7;
+  border: 1px solid #ccc;
   border-radius: 3px;
-  color: #495057;
-  min-width: 20px;
-  text-align: center;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  margin-right: 8px;
+  font-family: monospace;
 }
 
 /* 加载动画 */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 .loading {
-  position: relative;
-}
-
-.loading::after {
-  content: '';
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(0, 123, 255, 0.3);
   border-radius: 50%;
-  border-top-color: rgba(255, 255, 255, 0.8);
+  border-top-color: #007bff;
   animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
 }
 
-/* 响应式调整 */
-@media (max-width: 320px) {
-  .container {
-    width: 100%;
-    border-radius: 0;
-  }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 错误消息 */
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 0 20px 16px;
+  font-size: 13px;
+  display: none;
+}
+
+.error-message.visible {
+  display: block;
 }
 
 /* 深色模式支持 */
 @media (prefers-color-scheme: dark) {
   body {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    background: linear-gradient(135deg, #434343 0%, #000000 100%);
   }
   
   .container {
-    background: rgba(44, 62, 80, 0.95);
-    color: #ecf0f1;
+    background: rgba(33, 33, 33, 0.95);
+    color: #e0e0e0;
   }
   
   .title {
-    color: #ecf0f1;
+    color: #e0e0e0;
   }
   
   .version {
+    color: #aaaaaa;
     background: rgba(255, 255, 255, 0.1);
-    color: #bdc3c7;
   }
   
-  .header {
-    background: rgba(0, 0, 0, 0.1);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+  .status.inactive {
+    background: #343a40;
+    color: #adb5bd;
+    border-color: #495057;
   }
   
-  .footer {
-    background: rgba(0, 0, 0, 0.1);
-    border-top-color: rgba(255, 255, 255, 0.1);
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    border-color: rgba(255, 255, 255, 0.2);
   }
   
-  .shortcuts {
-    background: rgba(0, 0, 0, 0.1);
-    border-top-color: rgba(255, 255, 255, 0.1);
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  
+  .footer, .shortcuts {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .link-btn {
+    color: #5facff;
+  }
+  
+  .link-btn:hover {
+    background: rgba(95, 172, 255, 0.1);
   }
   
   .shortcuts-title {
-    color: #ecf0f1;
+    color: #e0e0e0;
   }
   
   .shortcut-item {
-    color: #bdc3c7;
+    color: #adb5bd;
   }
   
   kbd {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: #ecf0f1;
+    color: #e0e0e0;
+    background-color: #343a40;
+    border-color: #495057;
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 360px) {
+  .container {
+    width: 100%;
+    border-radius: 0;
   }
 }

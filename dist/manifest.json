@@ -23,8 +23,13 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.iife.js"],
-      "run_at": "document_idle"
+      "js": [
+        "lib/p5.min.js",
+        "lib/matter.min.js", 
+        "shared/softcat-core.js",
+        "content.js"
+      ],
+      "run_at": "document_end"
     }
   ],
   
@@ -52,7 +57,9 @@
     {
       "resources": [
         "assets/images/*",
-        "assets/sounds/*"
+        "assets/sounds/*",
+        "shared/*",
+        "lib/*.js"
       ],
       "matches": ["<all_urls>"]
     }

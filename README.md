@@ -82,7 +82,6 @@ softcat/
 │   ├── core/             # 核心逻辑
 │   │   └── softcat-core-entry.ts  # 软体猫核心实现
 │   └── vendor/           # 第三方库入口
-│       ├── pixi-entry.ts # PIXI.js 入口（已弃用）
 │       └── matter-entry.ts # Matter.js 入口
 ├── dist/                  # 构建输出
 │   ├── manifest.json     # 扩展清单
@@ -104,7 +103,6 @@ softcat/
 npm run build:mv3
 
 # 单独构建库文件
-npm run build:pixi      # 构建 PIXI.js（已弃用）
 npm run build:matter    # 构建 Matter.js
 npm run build:content   # 构建内容脚本
 
