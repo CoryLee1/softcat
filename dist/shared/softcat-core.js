@@ -95,8 +95,8 @@
         
         // 创建容器和画布
         this.createContainer();
-        
-        // 初始化p5.js
+
+      // 初始化p5.js
         await this.initP5();
         
         // 等待图片加载
@@ -184,7 +184,7 @@
       return container;
     }
 
-    // 初始化p5.js
+      // 初始化p5.js
     initP5() {
       return new Promise((resolve, reject) => {
         console.log('🎨 [SOFTCAT] 初始化p5.js...');
@@ -197,23 +197,23 @@
 
         try {
           this.p5Instance = new p5((p) => {
-            p.setup = () => {
+          p.setup = () => {
               console.log('🎨 [SOFTCAT] p5.js setup开始');
               
               // 创建画布
-              const canvas = p.createCanvas(window.innerWidth, window.innerHeight);
+            const canvas = p.createCanvas(window.innerWidth, window.innerHeight);
               canvas.parent('softcat-container');
               
               // 设置画布属性
               const canvasElement = canvas.canvas;
               canvasElement.id = 'softcat-canvas';
-              canvasElement.style.pointerEvents = 'auto'; // 允许交互
+              canvasElement.style.pointerEvents = 'none'; // 允许页面穿透
               
               console.log('✅ [SOFTCAT] p5.js画布已创建');
               resolve();
-            };
-
-            p.draw = () => {
+          };
+          
+          p.draw = () => {
               // 清除画布（保持透明）
               p.clear();
               
@@ -225,14 +225,14 @@
               // 绘制洗衣机
               if (this.machineReady && this.machine) {
                 this.drawWashingMachine(p);
-              }
-              
-              // 绘制软体猫
+            }
+            
+            // 绘制软体猫
               if (this.softBodyReady && this.softBody && this.softBody.bodies) {
                 this.drawSoftCat(p);
-              }
-              
-              // 绘制尾巴
+            }
+            
+            // 绘制尾巴
               if (this.tailSegments.length > 0) {
                 this.drawTail(p);
               }
@@ -315,9 +315,9 @@
           }
         }, 5000);
       });
-    }
+      }
 
-    // 初始化物理引擎
+      // 初始化物理引擎
     initMatter() {
       console.log('🔧 [SOFTCAT] 初始化物理引擎...');
       
@@ -334,25 +334,25 @@
       this.engine.world.gravity.y = this.CONFIG.physics.gravity.y;
       
       this.runner = Runner.create({
-        delta: 1000 / 60,
-        isFixed: true
-      });
-      
+          delta: 1000 / 60,
+          isFixed: true
+        });
+        
       // 🔥 关键修复：立即启动物理引擎
       Runner.run(this.runner, this.engine);
       console.log('✅ [SOFTCAT] 物理引擎已启动');
       
       // 创建调试渲染器（默认隐藏）
       this.render = Render.create({
-        canvas: document.createElement('canvas'),
+          canvas: document.createElement('canvas'),
         engine: this.engine,
-        options: {
-          width: window.innerWidth,
-          height: window.innerHeight,
-          wireframes: true,
-          background: 'transparent',
-          showAngleIndicator: false,
-          showVelocity: false,
+          options: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            wireframes: true,
+            background: 'transparent',
+            showAngleIndicator: false,
+            showVelocity: false,
           showCollisions: false
         }
       });
@@ -386,20 +386,20 @@
         this.createPinConstraints();
         console.log('✅ [SOFTCAT] 所有游戏对象创建完成');
       }, 500);
-    }
+      }
 
-    // 创建洗衣机
+      // 创建洗衣机
     createMachine() {
       const { Bodies, World } = Matter;
       
       const machineTopY = window.innerHeight * this.CONFIG.machine.topYRatio;
       this.machine = Bodies.rectangle(
-        window.innerWidth * 0.5,
+          window.innerWidth * 0.5, 
         machineTopY + this.CONFIG.machine.topOffset,
         this.CONFIG.machine.baseWidth * this.CONFIG.machine.physicsScale,
         this.CONFIG.machine.baseHeight * this.CONFIG.machine.physicsScale,
-        { 
-          isStatic: true,
+          { 
+            isStatic: true, 
           render: { fillStyle: '#888888' }
         }
       );
@@ -419,12 +419,12 @@
         originPos.x, originPos.y, 
         this.CONFIG.cat.cols, this.CONFIG.cat.rows, 
         0, 0, true, this.CONFIG.cat.particleRadius,
-        { 
-          frictionAir: 0.3,
-          restitution: 0.1,
-          inertia: Infinity,
-          friction: 0.8,
-          density: 0.001,
+          { 
+            frictionAir: 0.3,
+            restitution: 0.1,
+            inertia: Infinity,
+            friction: 0.8,
+            density: 0.001,
           render: { fillStyle: '#ff6b6b' }
         },
         { 
@@ -440,11 +440,11 @@
         const col = index % this.CONFIG.cat.cols;
         const x = originPos.x + col * this.CONFIG.cat.spacing;
         const y = originPos.y + row * this.CONFIG.cat.spacing;
-        Body.setPosition(body, { x, y });
-        Body.setVelocity(body, { x: 0, y: 0 });
-        Body.setAngularVelocity(body, 0);
-      });
-      
+          Body.setPosition(body, { x, y });
+          Body.setVelocity(body, { x: 0, y: 0 });
+          Body.setAngularVelocity(body, 0);
+        });
+        
       World.add(this.engine.world, this.softBody);
       this.softBodyReady = true;
       console.log('🐱 [SOFTCAT] 软体猫已创建，粒子数:', this.softBody.bodies.length);
@@ -455,27 +455,27 @@
       const { Bodies, World, Constraint } = Matter;
       
       const tailBase = this.softBody.bodies[(this.CONFIG.cat.rows - 1) * this.CONFIG.cat.cols + (this.CONFIG.cat.cols - 1)];
-      let prev = tailBase;
-      
+        let prev = tailBase;
+        
       this.tailSegments = [];
       
       for (let i = 0; i < this.CONFIG.tail.segments; i++) {
-        const seg = Bodies.circle(
+          const seg = Bodies.circle(
           tailBase.position.x + (i + 1) * this.CONFIG.tail.length,
-          tailBase.position.y,
+            tailBase.position.y,
           this.CONFIG.tail.radius,
-          { 
-            frictionAir: 0.1,
-            friction: 0.5,
-            restitution: 0.1,
-            density: 0.0003,
+            { 
+              frictionAir: 0.1,
+              friction: 0.5,
+              restitution: 0.1,
+              density: 0.0003,
             render: { fillStyle: '#ff8800' }
-          }
-        );
-        
-        const link = Constraint.create({ 
-          bodyA: prev, 
-          bodyB: seg, 
+            }
+          );
+          
+          const link = Constraint.create({ 
+            bodyA: prev, 
+            bodyB: seg, 
           length: this.CONFIG.tail.length, 
           stiffness: this.CONFIG.constraints.tail.stiffness,
           damping: this.CONFIG.constraints.tail.damping
@@ -483,30 +483,30 @@
         
         World.add(this.engine.world, [seg, link]);
         this.tailSegments.push({ segment: seg, link: link });
-        prev = seg;
+          prev = seg;
       }
       
       console.log('🦊 [SOFTCAT] 尾巴已创建，段数:', this.tailSegments.length);
-    }
+      }
 
-    // 创建约束
+      // 创建约束
     createPinConstraints() {
       const { Constraint, World } = Matter;
       
       this.pinConstraints = [];
       const bottomRowStart = (this.CONFIG.cat.rows - 1) * this.CONFIG.cat.cols;
       const centerStart = Math.floor((this.CONFIG.cat.cols - 4) / 2);
-      
-      for (let i = 0; i < 4; i++) {
-        const index = bottomRowStart + centerStart + i;
+        
+        for (let i = 0; i < 4; i++) {
+          const index = bottomRowStart + centerStart + i;
         const particle = this.softBody.bodies[index];
-        const constraint = Constraint.create({
-          bodyA: particle,
-          pointB: { 
-            x: particle.position.x,
+          const constraint = Constraint.create({
+            bodyA: particle,
+            pointB: { 
+              x: particle.position.x, 
             y: this.getMachineTopEdge() + this.CONFIG.cat.pinOffset
-          },
-          length: 0,
+            },
+            length: 0,
           stiffness: this.CONFIG.constraints.pin.stiffness,
           damping: this.CONFIG.constraints.pin.damping
         });
@@ -519,23 +519,20 @@
 
     // 设置交互
     setupInteractions() {
-      console.log('🎮 [SOFTCAT] 设置交互...');
+      console.log('🎮 [SOFTCAT] 设置选择性交互...');
       
-      const canvas = document.getElementById('softcat-canvas');
-      if (!canvas) return;
+      // 初始化交互区域
+      this.interactionZones = [];
       
-      // 鼠标事件
-      canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-      canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-      canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+      // 全局鼠标事件监听
+      document.addEventListener('mousemove', this.handleGlobalMouseMove.bind(this));
+      document.addEventListener('mousedown', this.handleGlobalMouseDown.bind(this));
+      document.addEventListener('mouseup', this.handleGlobalMouseUp.bind(this));
       
       // 键盘事件
       document.addEventListener('keydown', this.handleKeyDown.bind(this));
       
-      // 鼠标约束
-      this.setupMouseConstraint();
-      
-      console.log('✅ [SOFTCAT] 交互已设置');
+      console.log('✅ [SOFTCAT] 选择性交互已设置');
     }
 
     // 绘制方法
@@ -634,6 +631,23 @@
         }
       }
       
+      // 调试：显示交互区域
+      if (this.showVisualization) {
+        this.updateInteractionZones();
+        p.stroke(0, 255, 0, 150);
+        p.strokeWeight(2);
+        p.noFill();
+        
+        for (let zone of this.interactionZones) {
+          p.rect(zone.x, zone.y, zone.width, zone.height);
+          
+          p.fill(0, 255, 0);
+          p.textSize(12);
+          p.text(zone.type, zone.x + 5, zone.y + 15);
+          p.noFill();
+        }
+      }
+      
       p.pop();
     }
 
@@ -663,6 +677,62 @@
       return this.machine.position.y - (this.CONFIG.machine.baseHeight * this.CONFIG.machine.physicsScale) / 2;
     }
 
+    // 更新交互区域
+    updateInteractionZones() {
+      this.interactionZones = [];
+      
+      // 洗衣机交互区域
+      if (this.machine) {
+        const padding = 10;
+        const halfWidth = (this.CONFIG.machine.baseWidth * this.CONFIG.machine.physicsScale) / 2;
+        const halfHeight = (this.CONFIG.machine.baseHeight * this.CONFIG.machine.physicsScale) / 2;
+        
+        this.interactionZones.push({
+          type: 'machine',
+          x: this.machine.position.x - halfWidth - padding,
+          y: this.machine.position.y - halfHeight - padding,
+          width: (halfWidth + padding) * 2,
+          height: (halfHeight + padding) * 2
+        });
+      }
+      
+      // 软体猫交互区域
+      if (this.softBody && this.softBody.bodies) {
+        const bodies = this.softBody.bodies;
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        
+        for (let body of bodies) {
+          minX = Math.min(minX, body.position.x);
+          maxX = Math.max(maxX, body.position.x);
+          minY = Math.min(minY, body.position.y);
+          maxY = Math.max(maxY, body.position.y);
+        }
+        
+        const padding = 30;
+        this.interactionZones.push({
+          type: 'softcat',
+          x: minX - padding,
+          y: minY - padding,
+          width: (maxX - minX) + padding * 2,
+          height: (maxY - minY) + padding * 2
+        });
+      }
+    }
+
+    // 检查点是否在交互区域
+    isPointInInteractionZone(x, y) {
+      this.updateInteractionZones();
+      
+      for (let zone of this.interactionZones) {
+        if (x >= zone.x && x <= zone.x + zone.width &&
+            y >= zone.y && y <= zone.y + zone.height) {
+          return zone;
+        }
+      }
+      return null;
+    }
+
     // 应用洗衣机震动效果
     applyWashingMachineEffect() {
       if (!this.machine || !this.softBody || !this.isRunning) return;
@@ -683,34 +753,62 @@
       }
     }
 
-    // 事件处理方法
-    handleMouseDown(e) {
-      const rect = e.target.getBoundingClientRect();
+    // 全局鼠标移动处理
+    handleGlobalMouseMove(e) {
+      const canvas = document.getElementById('softcat-canvas');
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
-      if (this.isPointInMachine(mouseX, mouseY)) {
-        this.startDragging(mouseX, mouseY);
-        e.preventDefault();
-      } else if (this.isPointInSoftCat(mouseX, mouseY)) {
-        // 点击软体猫时也启动拖拽
-        this.startDragging(mouseX, mouseY);
-        e.preventDefault();
+      const zone = this.isPointInInteractionZone(mouseX, mouseY);
+      
+      // 动态切换指针事件和光标
+      if (zone) {
+        canvas.style.pointerEvents = 'auto';
+        canvas.style.cursor = this.isDraggingMachine ? 'grabbing' : 'grab';
+      } else {
+        canvas.style.pointerEvents = 'none';
+        canvas.style.cursor = 'default';
       }
-    }
-
-    handleMouseMove(e) {
+      
+      // 处理拖拽
       if (this.isDraggingMachine) {
-        const rect = e.target.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
         this.updateDragging(mouseX, mouseY);
+        e.preventDefault();
       }
     }
 
-    handleMouseUp() {
+    // 全局鼠标按下
+    handleGlobalMouseDown(e) {
+      const canvas = document.getElementById('softcat-canvas');
+      if (!canvas || canvas.style.pointerEvents === 'none') return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const zone = this.isPointInInteractionZone(mouseX, mouseY);
+      if (zone) {
+        this.startDragging(mouseX, mouseY);
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+
+    // 全局鼠标释放
+    handleGlobalMouseUp(e) {
       if (this.isDraggingMachine) {
         this.stopDragging();
+        
+        const canvas = document.getElementById('softcat-canvas');
+        if (canvas) {
+          canvas.style.cursor = 'grab';
+        }
+        
+        e.preventDefault();
       }
     }
 
@@ -784,40 +882,40 @@
       
       this.softBody.bodies.forEach((body, index) => {
         const initialPos = this.initialSoftBodyPositions[index];
-        Body.setPosition(body, {
-          x: initialPos.x + deltaX,
-          y: initialPos.y + deltaY
+          Body.setPosition(body, {
+            x: initialPos.x + deltaX,
+            y: initialPos.y + deltaY
+          });
         });
-      });
-    }
+      }
 
     stopDragging() {
       const { World } = Matter;
-      
+        
       this.isDraggingMachine = false;
       
       // 重新添加约束
       this.pinConstraints.forEach(pin => {
-        pin.pointB.x = pin.bodyA.position.x;
+          pin.pointB.x = pin.bodyA.position.x;
         pin.pointB.y = this.getMachineTopEdge() + this.CONFIG.cat.pinOffset;
         World.add(this.engine.world, pin);
-      });
-    }
+        });
+      }
 
-    // 设置鼠标约束
+      // 设置鼠标约束
     setupMouseConstraint() {
       const { Mouse, MouseConstraint, World } = Matter;
       
       const canvas = document.getElementById('softcat-canvas');
-      const mouse = Mouse.create(canvas);
+        const mouse = Mouse.create(canvas);
       const mouseConstraint = MouseConstraint.create(this.engine, { 
-        mouse, 
-        constraint: { 
-          stiffness: 0.2,
-          damping: 0.5,
-          render: { visible: false } 
-        } 
-      });
+          mouse, 
+          constraint: { 
+            stiffness: 0.2,
+            damping: 0.5,
+            render: { visible: false } 
+          } 
+        });
       World.add(this.engine.world, mouseConstraint);
     }
 
@@ -866,24 +964,24 @@
       if (this.p5Instance) {
         this.p5Instance.remove();
         this.p5Instance = null;
-      }
-      
-      // 移除容器
-      const container = document.getElementById('softcat-container');
-      if (container) {
-        container.remove();
-      }
+          }
+          
+          // 移除容器
+          const container = document.getElementById('softcat-container');
+          if (container) {
+            container.remove();
+          }
       
       // 移除调试画布
       if (this.render && this.render.canvas) {
         this.render.canvas.remove();
-      }
-      
-      // 清理全局状态
+          }
+          
+          // 清理全局状态
       this.isInitialized = false;
       this.isRunning = false;
-      window.SoftCatLoaded = false;
-      delete window.SoftCat;
+          window.SoftCatLoaded = false;
+          delete window.SoftCat;
       
       console.log('✅ [SOFTCAT] 软体猫已销毁');
     }
