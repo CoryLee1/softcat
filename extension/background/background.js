@@ -1,75 +1,454 @@
-// extension/background/background.js - 静态注入版本
-// 简化版本，使用content_scripts静态注入
+// extension/background/background.js - 修复版本
+// 改进状态管理和错误处理
 
-let softcatEnabled = false;
+console.log('🔧 [BACKGROUND] 软体猫后台脚本已加载');
 
-// 监听扩展安装
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('软体猫扩展已安装');
-});
-
-// 监听来自弹窗的消息
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  try {
-    if (request.action === 'toggleSoftCat') {
-      const result = await toggleSoftCat();
-      sendResponse(result);
-    } else if (request.action === 'getSoftCatStatus') {
-      sendResponse({ enabled: softcatEnabled });
-    } else if (request.action === 'test') {
-      sendResponse({ status: 'background script working' });
-    }
-  } catch (error) {
-    console.error('Background script error:', error);
-    sendResponse({ error: error.message });
-  }
-  return true; // 保持消息通道开放
-});
-
-// 切换软体猫状态
-async function toggleSoftCat() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+class SoftCatBackgroundManager {
+  constructor() {
+    this.tabStates = new Map(); // 存储每个标签页的状态
+    this.globalEnabled = false;
     
-    if (!tab) {
-      throw new Error('无法获取当前标签页');
-    }
+    this.init();
+  }
 
-    if (softcatEnabled) {
-      // 停止软体猫 - 发送消息给content script
-      await chrome.tabs.sendMessage(tab.id, { action: 'stopSoftCat' });
-      softcatEnabled = false;
-      return { success: true, enabled: false, message: '软体猫已停止' };
-    } else {
-      // 启动软体猫 - 发送消息给content script
-      await chrome.tabs.sendMessage(tab.id, { action: 'startSoftCat' });
-      softcatEnabled = true;
-      return { success: true, enabled: true, message: '软体猫已启动' };
+  // 初始化
+  init() {
+    console.log('🔄 [BACKGROUND] 后台管理器初始化');
+    
+    // 监听扩展安装
+    chrome.runtime.onInstalled.addListener(this.handleInstalled.bind(this));
+    
+    // 监听消息
+    chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
+    
+    // 监听标签页事件
+    chrome.tabs.onUpdated.addListener(this.handleTabUpdated.bind(this));
+    chrome.tabs.onActivated.addListener(this.handleTabActivated.bind(this));
+    chrome.tabs.onRemoved.addListener(this.handleTabRemoved.bind(this));
+    
+    // 从存储中恢复状态
+    this.restoreState();
+  }
+
+  // 处理扩展安装
+  handleInstalled(details) {
+    console.log('🎉 [BACKGROUND] 软体猫扩展已安装/更新:', details.reason);
+    
+    if (details.reason === 'install') {
+      // 首次安装，设置默认状态
+      this.saveState();
     }
-  } catch (error) {
-    console.error('切换软体猫状态失败:', error);
-    return { success: false, error: error.message };
+  }
+
+  // 处理消息
+  handleMessage(request, sender, sendResponse) {
+    console.log('📨 [BACKGROUND] 收到消息:', request, '来自:', sender);
+    
+    // 异步处理消息
+    this.processMessage(request, sender).then(response => {
+      console.log('📤 [BACKGROUND] 发送响应:', response);
+      sendResponse(response);
+    }).catch(error => {
+      console.error('❌ [BACKGROUND] 消息处理错误:', error);
+      sendResponse({
+        success: false,
+        error: error.message,
+        action: request.action
+      });
+    });
+    
+    return true; // 保持消息通道开放
+  }
+
+  // 处理消息的核心逻辑
+  async processMessage(request, sender) {
+    switch (request.action) {
+      case 'toggleSoftCat':
+        return await this.toggleSoftCat(sender.tab);
+        
+      case 'getSoftCatStatus':
+        return await this.getSoftCatStatus(sender.tab);
+        
+      case 'test':
+        return { status: 'background script working', timestamp: Date.now() };
+        
+      default:
+        throw new Error(`未知操作: ${request.action}`);
+    }
+  }
+
+  // 切换软体猫状态
+  async toggleSoftCat(tab) {
+    console.log('🔄 [BACKGROUND] 切换软体猫状态，标签页:', tab?.id);
+    
+    try {
+      // 获取当前活动标签页（如果没有提供）
+      if (!tab) {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        tab = activeTab;
+      }
+      
+      if (!tab) {
+        throw new Error('无法获取当前标签页');
+      }
+      
+      // 检查标签页是否支持内容脚本
+      if (!this.isValidTab(tab)) {
+        throw new Error('当前页面不支持软体猫（chrome://、moz-extension:// 等系统页面）');
+      }
+      
+      // 获取当前标签页状态
+      const currentStatus = await this.getTabStatus(tab.id);
+      const isCurrentlyRunning = currentStatus.running;
+      
+      console.log(`🎯 [BACKGROUND] 标签页 ${tab.id} 当前状态:`, currentStatus);
+      
+      let response;
+      
+      if (isCurrentlyRunning) {
+        // 停止软体猫
+        response = await this.stopSoftCatInTab(tab.id);
+      } else {
+        // 启动软体猫
+        response = await this.startSoftCatInTab(tab.id);
+      }
+      
+      // 更新全局状态
+      this.updateGlobalState();
+      
+      // 保存状态
+      this.saveState();
+      
+      return response;
+      
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 切换软体猫失败:', error);
+      return {
+        success: false,
+        error: error.message,
+        details: {
+          tabId: tab?.id,
+          tabUrl: tab?.url
+        }
+      };
+    }
+  }
+
+  // 在标签页中启动软体猫
+  async startSoftCatInTab(tabId) {
+    console.log(`🚀 [BACKGROUND] 在标签页 ${tabId} 中启动软体猫`);
+    
+    try {
+      // 发送启动消息
+      const response = await this.sendMessageToTab(tabId, { action: 'startSoftCat' });
+      
+      if (response.success) {
+        // 更新标签页状态
+        this.setTabState(tabId, {
+          enabled: true,
+          running: true,
+          lastStarted: Date.now()
+        });
+        
+        return {
+          success: true,
+          enabled: true,
+          message: '软体猫已启动',
+          tabId: tabId
+        };
+      } else {
+        throw new Error(response.error || '启动失败');
+      }
+      
+    } catch (error) {
+      console.error(`❌ [BACKGROUND] 在标签页 ${tabId} 启动软体猫失败:`, error);
+      
+      // 更新状态为失败
+      this.setTabState(tabId, {
+        enabled: false,
+        running: false,
+        lastError: error.message
+      });
+      
+      return {
+        success: false,
+        enabled: false,
+        error: error.message,
+        tabId: tabId
+      };
+    }
+  }
+
+  // 在标签页中停止软体猫
+  async stopSoftCatInTab(tabId) {
+    console.log(`⏹️ [BACKGROUND] 在标签页 ${tabId} 中停止软体猫`);
+    
+    try {
+      // 发送停止消息
+      const response = await this.sendMessageToTab(tabId, { action: 'stopSoftCat' });
+      
+      if (response.success) {
+        // 更新标签页状态
+        this.setTabState(tabId, {
+          enabled: false,
+          running: false,
+          lastStopped: Date.now()
+        });
+        
+        return {
+          success: true,
+          enabled: false,
+          message: '软体猫已停止',
+          tabId: tabId
+        };
+      } else {
+        throw new Error(response.error || '停止失败');
+      }
+      
+    } catch (error) {
+      console.error(`❌ [BACKGROUND] 在标签页 ${tabId} 停止软体猫失败:`, error);
+      
+      // 即使停止失败，也标记为未运行
+      this.setTabState(tabId, {
+        enabled: false,
+        running: false,
+        lastError: error.message
+      });
+      
+      return {
+        success: true, // 停止操作总是返回成功
+        enabled: false,
+        message: '软体猫已停止（可能存在错误）',
+        error: error.message,
+        tabId: tabId
+      };
+    }
+  }
+
+  // 获取软体猫状态
+  async getSoftCatStatus(tab) {
+    try {
+      // 获取当前活动标签页（如果没有提供）
+      if (!tab) {
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        tab = activeTab;
+      }
+      
+      if (!tab) {
+        return {
+          success: false,
+          error: '无法获取当前标签页'
+        };
+      }
+      
+      const tabStatus = await this.getTabStatus(tab.id);
+      
+      return {
+        success: true,
+        enabled: tabStatus.running,
+        tabId: tab.id,
+        tabUrl: tab.url,
+        globalEnabled: this.globalEnabled,
+        ...tabStatus
+      };
+      
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 获取状态失败:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // 获取标签页状态
+  async getTabStatus(tabId) {
+    try {
+      // 尝试从内容脚本获取实时状态
+      const response = await this.sendMessageToTab(tabId, { action: 'getStatus' }, 2000);
+      
+      if (response.success) {
+        // 更新缓存状态
+        this.setTabState(tabId, {
+          running: response.running,
+          loaded: response.loaded,
+          lastChecked: Date.now()
+        });
+        
+        return response;
+      } else {
+        throw new Error(response.error || '获取状态失败');
+      }
+      
+    } catch (error) {
+      console.warn(`⚠️ [BACKGROUND] 无法获取标签页 ${tabId} 的实时状态:`, error.message);
+      
+      // 返回缓存状态
+      const cachedState = this.tabStates.get(tabId) || {
+        running: false,
+        loaded: false,
+        enabled: false
+      };
+      
+      return {
+        success: true,
+        ...cachedState,
+        fromCache: true
+      };
+    }
+  }
+
+  // 处理标签页更新
+  handleTabUpdated(tabId, changeInfo, tab) {
+    if (changeInfo.status === 'complete') {
+      console.log(`🔄 [BACKGROUND] 标签页 ${tabId} 加载完成`);
+      
+      // 延迟检查是否需要重新启动软体猫
+      setTimeout(async () => {
+        const tabState = this.tabStates.get(tabId);
+        
+        if (tabState && tabState.enabled && this.isValidTab(tab)) {
+          console.log(`🔄 [BACKGROUND] 在刷新的标签页 ${tabId} 中重新启动软体猫`);
+          
+          try {
+            await this.startSoftCatInTab(tabId);
+          } catch (error) {
+            console.error(`❌ [BACKGROUND] 重新启动软体猫失败:`, error);
+          }
+        }
+      }, 1000);
+    }
+  }
+
+  // 处理标签页激活
+  handleTabActivated(activeInfo) {
+    console.log(`🎯 [BACKGROUND] 标签页 ${activeInfo.tabId} 被激活`);
+    
+    // 这里可以添加标签页切换时的逻辑
+    // 比如更新扩展图标状态等
+  }
+
+  // 处理标签页移除
+  handleTabRemoved(tabId, removeInfo) {
+    console.log(`🗑️ [BACKGROUND] 标签页 ${tabId} 被移除`);
+    
+    // 清理标签页状态
+    if (this.tabStates.has(tabId)) {
+      this.tabStates.delete(tabId);
+      this.updateGlobalState();
+      this.saveState();
+    }
+  }
+
+  // 辅助方法
+  isValidTab(tab) {
+    if (!tab || !tab.url) return false;
+    
+    const invalidPrefixes = [
+      'chrome://',
+      'chrome-extension://',
+      'moz-extension://',
+      'edge://',
+      'about:',
+      'data:',
+      'file://'
+    ];
+    
+    return !invalidPrefixes.some(prefix => tab.url.startsWith(prefix));
+  }
+
+  async sendMessageToTab(tabId, message, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('消息发送超时'));
+      }, timeout);
+      
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        clearTimeout(timer);
+        
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(response || { success: false, error: '无响应' });
+        }
+      });
+    });
+  }
+
+  setTabState(tabId, state) {
+    const currentState = this.tabStates.get(tabId) || {};
+    const newState = { ...currentState, ...state, lastUpdated: Date.now() };
+    
+    this.tabStates.set(tabId, newState);
+    console.log(`📊 [BACKGROUND] 标签页 ${tabId} 状态已更新:`, newState);
+  }
+
+  updateGlobalState() {
+    // 检查是否有任何标签页在运行软体猫
+    const hasRunningTabs = Array.from(this.tabStates.values()).some(state => state.running);
+    this.globalEnabled = hasRunningTabs;
+    
+    console.log(`🌐 [BACKGROUND] 全局状态已更新: ${this.globalEnabled ? '启用' : '禁用'}`);
+  }
+
+  // 状态持久化
+  async saveState() {
+    try {
+      const stateData = {
+        globalEnabled: this.globalEnabled,
+        tabStates: Object.fromEntries(this.tabStates),
+        lastSaved: Date.now()
+      };
+      
+      await chrome.storage.local.set({ softcatState: stateData });
+      console.log('💾 [BACKGROUND] 状态已保存');
+      
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 保存状态失败:', error);
+    }
+  }
+
+  async restoreState() {
+    try {
+      const result = await chrome.storage.local.get('softcatState');
+      
+      if (result.softcatState) {
+        const stateData = result.softcatState;
+        this.globalEnabled = stateData.globalEnabled || false;
+        this.tabStates = new Map(Object.entries(stateData.tabStates || {}));
+        
+        console.log('📂 [BACKGROUND] 状态已恢复:', {
+          globalEnabled: this.globalEnabled,
+          tabCount: this.tabStates.size
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 恢复状态失败:', error);
+    }
+  }
+
+  // 调试方法
+  getDebugInfo() {
+    return {
+      globalEnabled: this.globalEnabled,
+      tabStates: Object.fromEntries(this.tabStates),
+      timestamp: Date.now()
+    };
   }
 }
 
-// 处理标签页更新
-chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-  if (changeInfo.status === 'complete' && softcatEnabled) {
-    // 页面刷新后重新启动软体猫
-    setTimeout(function() {
-      chrome.tabs.sendMessage(tabId, { action: 'startSoftCat' }).catch(function(error) {
-        console.error('重新启动软体猫失败:', error);
-      });
-    }, 500);
-  }
+// 创建后台管理器实例
+const backgroundManager = new SoftCatBackgroundManager();
+
+// 暴露给调试用
+if (typeof globalThis !== 'undefined') {
+  globalThis.SoftCatBackgroundManager = backgroundManager;
+}
+
+// 错误处理
+self.addEventListener('error', (event) => {
+  console.error('❌ [BACKGROUND] 后台脚本错误:', event.error);
 });
 
-// 处理标签页激活
-chrome.tabs.onActivated.addListener(function(activeInfo) {
-  if (softcatEnabled) {
-    // 切换标签页后检查是否需要启动软体猫
-    chrome.tabs.sendMessage(activeInfo.tabId, { action: 'startSoftCat' }).catch(function(error) {
-      console.error('启动软体猫失败:', error);
-    });
-  }
-});
+console.log('✅ [BACKGROUND] 软体猫后台脚本初始化完成');
