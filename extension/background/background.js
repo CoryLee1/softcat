@@ -66,6 +66,8 @@ class SoftCatBackgroundManager {
 
   // 处理消息的核心逻辑
   async processMessage(request, sender) {
+    console.log('📨 [BACKGROUND] 处理消息:', request.action, '来自:', sender);
+    
     switch (request.action) {
       case 'toggleSoftCat':
         return await this.toggleSoftCat(sender.tab);
@@ -74,9 +76,11 @@ class SoftCatBackgroundManager {
         return await this.getSoftCatStatus(sender.tab);
         
       case 'collectAllTabs':
+        console.log('📋 [BACKGROUND] 收到一键收Tab请求');
         return await this.collectAllTabs();
         
       case 'openLaundryRoom':
+        console.log('🏠 [BACKGROUND] 收到打开洗衣房请求');
         return await this.openLaundryRoom();
         
       case 'getDatabaseTabs':
@@ -89,6 +93,7 @@ class SoftCatBackgroundManager {
         return { status: 'background script working', timestamp: Date.now() };
         
       default:
+        console.error('❌ [BACKGROUND] 未知操作:', request.action);
         throw new Error(`未知操作: ${request.action}`);
     }
   }
@@ -449,8 +454,16 @@ class SoftCatBackgroundManager {
     try {
       console.log('📋 [BACKGROUND] 开始一键收Tab...');
       
+      // 检查数据库是否可用
+      if (!this.database) {
+        console.error('❌ [BACKGROUND] 数据库未初始化');
+        return { success: false, error: '数据库未初始化' };
+      }
+      
       // 初始化数据库
+      console.log('🗄️ [BACKGROUND] 初始化数据库...');
       await this.database.init();
+      console.log('✅ [BACKGROUND] 数据库初始化完成');
       
       // 获取所有标签页
       const tabs = await chrome.tabs.query({});
@@ -530,6 +543,8 @@ class SoftCatBackgroundManager {
       
       // 创建洗衣房页面
       const laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
+      console.log('🔗 [BACKGROUND] 洗衣房URL:', laundryRoomUrl);
+      
       const tab = await chrome.tabs.create({
         url: laundryRoomUrl,
         active: true
