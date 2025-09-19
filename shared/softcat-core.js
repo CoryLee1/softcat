@@ -866,11 +866,11 @@
       // 发送消息给background script收集所有tab
       chrome.runtime.sendMessage({ action: 'collectAllTabs' }, (response) => {
         if (response && response.success) {
-          console.log('✅ [SOFTCAT] Tab收集成功:', response.tabs);
-          this.showNotification('已收集 ' + response.tabs.length + ' 个标签页');
+          console.log('✅ [SOFTCAT] 一键收Tab成功:', response);
+          this.showNotification(`已收集 ${response.count} 个标签页，关闭了 ${response.closedCount} 个，正在打开洗衣房...`);
         } else {
-          console.error('❌ [SOFTCAT] Tab收集失败:', response?.error);
-          this.showNotification('Tab收集失败', 'error');
+          console.error('❌ [SOFTCAT] 一键收Tab失败:', response?.error);
+          this.showNotification('一键收Tab失败', 'error');
         }
       });
     }

@@ -665,17 +665,19 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
         return _restoreState.apply(this, arguments);
       }
       return restoreState;
-    }() // 一键收Tab功能
+    }() // 一键收Tab功能 - 收集并关闭其他标签页，打开洗衣房
   }, {
     key: "collectAllTabs",
     value: function () {
       var _collectAllTabs = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
-        var tabs, tabData, _t0;
+        var tabs, tabData, currentTab, tabsToClose, tabIds, laundryRoomUrl, _t0;
         return _regenerator().w(function (_context1) {
           while (1) switch (_context1.p = _context1.n) {
             case 0:
               _context1.p = 0;
-              console.log('📋 [BACKGROUND] 开始收集所有标签页...');
+              console.log('📋 [BACKGROUND] 开始一键收Tab...');
+
+              // 获取所有标签页
               _context1.n = 1;
               return chrome.tabs.query({});
             case 1:
@@ -693,24 +695,60 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
                   mutedInfo: tab.mutedInfo,
                   lastAccessed: tab.lastAccessed || Date.now()
                 };
+              }); // 保存标签页数据到存储
+              _context1.n = 2;
+              return chrome.storage.local.set({
+                collectedTabs: tabData,
+                collectedAt: Date.now()
               });
-              console.log("\u2705 [BACKGROUND] \u6210\u529F\u6536\u96C6 ".concat(tabData.length, " \u4E2A\u6807\u7B7E\u9875"));
+            case 2:
+              console.log("\u2705 [BACKGROUND] \u5DF2\u4FDD\u5B58 ".concat(tabData.length, " \u4E2A\u6807\u7B7E\u9875\u6570\u636E"));
+
+              // 关闭除当前标签页外的所有标签页
+              currentTab = tabs.find(function (tab) {
+                return tab.active;
+              });
+              tabsToClose = tabs.filter(function (tab) {
+                return tab.id !== currentTab.id;
+              });
+              if (!(tabsToClose.length > 0)) {
+                _context1.n = 4;
+                break;
+              }
+              tabIds = tabsToClose.map(function (tab) {
+                return tab.id;
+              });
+              _context1.n = 3;
+              return chrome.tabs.remove(tabIds);
+            case 3:
+              console.log("\uD83D\uDDD1\uFE0F [BACKGROUND] \u5DF2\u5173\u95ED ".concat(tabsToClose.length, " \u4E2A\u6807\u7B7E\u9875"));
+            case 4:
+              // 打开洗衣房页面
+              laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
+              _context1.n = 5;
+              return chrome.tabs.create({
+                url: laundryRoomUrl,
+                active: true
+              });
+            case 5:
+              console.log('🏠 [BACKGROUND] 已打开洗衣房页面');
               return _context1.a(2, {
                 success: true,
                 tabs: tabData,
                 count: tabData.length,
+                closedCount: tabsToClose.length,
                 timestamp: Date.now()
               });
-            case 2:
-              _context1.p = 2;
+            case 6:
+              _context1.p = 6;
               _t0 = _context1.v;
-              console.error('❌ [BACKGROUND] 收集标签页失败:', _t0);
+              console.error('❌ [BACKGROUND] 一键收Tab失败:', _t0);
               return _context1.a(2, {
                 success: false,
                 error: _t0.message
               });
           }
-        }, _callee1, null, [[0, 2]]);
+        }, _callee1, null, [[0, 6]]);
       }));
       function collectAllTabs() {
         return _collectAllTabs.apply(this, arguments);

@@ -434,11 +434,12 @@ class SoftCatBackgroundManager {
     }
   }
 
-  // 一键收Tab功能
+  // 一键收Tab功能 - 收集并关闭其他标签页，打开洗衣房
   async collectAllTabs() {
     try {
-      console.log('📋 [BACKGROUND] 开始收集所有标签页...');
+      console.log('📋 [BACKGROUND] 开始一键收Tab...');
       
+      // 获取所有标签页
       const tabs = await chrome.tabs.query({});
       const tabData = tabs.map(tab => ({
         id: tab.id,
@@ -453,17 +454,43 @@ class SoftCatBackgroundManager {
         lastAccessed: tab.lastAccessed || Date.now()
       }));
       
-      console.log(`✅ [BACKGROUND] 成功收集 ${tabData.length} 个标签页`);
+      // 保存标签页数据到存储
+      await chrome.storage.local.set({
+        collectedTabs: tabData,
+        collectedAt: Date.now()
+      });
+      
+      console.log(`✅ [BACKGROUND] 已保存 ${tabData.length} 个标签页数据`);
+      
+      // 关闭除当前标签页外的所有标签页
+      const currentTab = tabs.find(tab => tab.active);
+      const tabsToClose = tabs.filter(tab => tab.id !== currentTab.id);
+      
+      if (tabsToClose.length > 0) {
+        const tabIds = tabsToClose.map(tab => tab.id);
+        await chrome.tabs.remove(tabIds);
+        console.log(`🗑️ [BACKGROUND] 已关闭 ${tabsToClose.length} 个标签页`);
+      }
+      
+      // 打开洗衣房页面
+      const laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
+      await chrome.tabs.create({
+        url: laundryRoomUrl,
+        active: true
+      });
+      
+      console.log('🏠 [BACKGROUND] 已打开洗衣房页面');
       
       return {
         success: true,
         tabs: tabData,
         count: tabData.length,
+        closedCount: tabsToClose.length,
         timestamp: Date.now()
       };
       
     } catch (error) {
-      console.error('❌ [BACKGROUND] 收集标签页失败:', error);
+      console.error('❌ [BACKGROUND] 一键收Tab失败:', error);
       return {
         success: false,
         error: error.message

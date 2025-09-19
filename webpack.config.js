@@ -70,6 +70,10 @@ module.exports = {
           to: 'options.css'
         },
         {
+          from: 'extension/laundry-room.html',
+          to: 'laundry-room.html'
+        },
+        {
           from: 'extension/assets',
           to: 'assets'
         },
