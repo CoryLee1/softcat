@@ -704,17 +704,43 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
               tabs = _context1.v;
               console.log("\uD83D\uDCCA [BACKGROUND] \u627E\u5230 ".concat(tabs.length, " \u4E2A\u6807\u7B7E\u9875"));
               tabData = tabs.map(function (tab) {
+                // 提取网站名称
+                var siteName = '未知网站';
+                try {
+                  var url = new URL(tab.url);
+                  siteName = url.hostname.replace('www.', '');
+                } catch (e) {
+                  // 如果URL解析失败，使用标题
+                  siteName = tab.title || '未知网站';
+                }
                 return {
                   id: tab.id,
                   url: tab.url,
                   title: tab.title,
-                  favIconUrl: tab.favIconUrl,
-                  windowId: tab.windowId,
-                  active: tab.active,
-                  pinned: tab.pinned,
-                  audible: tab.audible,
-                  mutedInfo: tab.mutedInfo,
-                  lastAccessed: tab.lastAccessed || Date.now()
+                  summary: tab.title,
+                  // 使用标题作为摘要
+                  site: {
+                    name: siteName,
+                    favicon: tab.favIconUrl
+                  },
+                  tags: [],
+                  // 暂时为空数组
+                  image: {
+                    palette: ['#4facfe'] // 默认颜色
+                  },
+                  originalData: {
+                    id: tab.id,
+                    url: tab.url,
+                    title: tab.title,
+                    favIconUrl: tab.favIconUrl,
+                    windowId: tab.windowId,
+                    active: tab.active,
+                    pinned: tab.pinned,
+                    audible: tab.audible,
+                    mutedInfo: tab.mutedInfo,
+                    lastAccessed: tab.lastAccessed || Date.now()
+                  },
+                  createdAt: new Date().toISOString()
                 };
               }); // 保存到chrome.storage.local
               collectionData = {
