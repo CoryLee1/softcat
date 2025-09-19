@@ -36,6 +36,14 @@
       this.imagesLoaded = false;
       this.showVisualization = false;
       
+      // 点击选项
+      this.showClickOptions = false;
+      this.clickOptions = [
+        { id: 'collect-tabs', text: '一键收Tab', icon: '📋', action: 'collectTabs' },
+        { id: 'laundry-room', text: '洗衣房', icon: '🏠', action: 'laundryRoom' },
+        { id: 'search-history', text: '查询记录', icon: '🔍', action: 'searchHistory' }
+      ];
+      
       // 拖拽状态
       this.isDraggingMachine = false;
       this.dragOffset = { x: 0, y: 0 };
@@ -239,6 +247,9 @@
               
               // 应用洗衣机震动效果
               this.applyWashingMachineEffect();
+              
+              // 绘制点击选项
+              this.drawClickOptions(p);
             };
 
             // 处理窗口大小变化
@@ -733,6 +744,187 @@
       return null;
     }
 
+    // 切换点击选项显示状态
+    toggleClickOptions(mouseX, mouseY) {
+      if (this.showClickOptions) {
+        // 如果已经显示，则隐藏
+        this.showClickOptions = false;
+        console.log('🎯 [SOFTCAT] 隐藏选项菜单');
+      } else {
+        // 如果未显示，则显示
+        this.showClickOptions = true;
+        this.clickOptionsX = mouseX;
+        this.clickOptionsY = mouseY;
+        console.log('🎯 [SOFTCAT] 显示选项菜单');
+      }
+    }
+
+    // 绘制点击选项
+    drawClickOptions(p) {
+      if (!this.showClickOptions || !this.clickOptionsX || !this.clickOptionsY) return;
+      
+      p.push();
+      
+      const optionsWidth = 200;
+      const optionHeight = 40;
+      const spacing = 8;
+      const totalHeight = this.clickOptions.length * (optionHeight + spacing) - spacing;
+      
+      // 计算位置（避免超出屏幕边界）
+      let x = this.clickOptionsX + 20;
+      let y = this.clickOptionsY - totalHeight / 2;
+      
+      if (x + optionsWidth > p.width) x = this.clickOptionsX - optionsWidth - 20;
+      if (y < 0) y = 10;
+      if (y + totalHeight > p.height) y = p.height - totalHeight - 10;
+      
+      // 绘制背景
+      p.fill(255, 255, 255, 240);
+      p.stroke(200, 200, 200);
+      p.strokeWeight(1);
+      p.rect(x, y, optionsWidth, totalHeight, 8);
+      
+      // 绘制选项
+      this.clickOptions.forEach((option, index) => {
+        const optionY = y + index * (optionHeight + spacing);
+        
+        // 悬停效果
+        const mouseInOption = p.mouseX >= x && p.mouseX <= x + optionsWidth &&
+                             p.mouseY >= optionY && p.mouseY <= optionY + optionHeight;
+        
+        if (mouseInOption) {
+          p.fill(240, 240, 240, 240);
+        } else {
+          p.fill(255, 255, 255, 240);
+        }
+        
+        p.noStroke();
+        p.rect(x, optionY, optionsWidth, optionHeight, 8);
+        
+        // 绘制图标和文字
+        p.fill(100, 100, 100);
+        p.textSize(16);
+        p.textAlign(p.LEFT, p.CENTER);
+        p.text(option.icon, x + 12, optionY + optionHeight / 2);
+        
+        p.fill(60, 60, 60);
+        p.textSize(14);
+        p.text(option.text, x + 40, optionY + optionHeight / 2);
+      });
+      
+      p.pop();
+    }
+
+    // 处理点击选项点击
+    handleClickOptionClick(mouseX, mouseY) {
+      if (!this.showClickOptions) return false;
+      
+      const optionsWidth = 200;
+      const optionHeight = 40;
+      const spacing = 8;
+      
+      for (let i = 0; i < this.clickOptions.length; i++) {
+        const optionY = this.clickOptionsY - (this.clickOptions.length * (optionHeight + spacing) - spacing) / 2 + i * (optionHeight + spacing);
+        
+        if (mouseX >= this.clickOptionsX + 20 && mouseX <= this.clickOptionsX + 20 + optionsWidth &&
+            mouseY >= optionY && mouseY <= optionY + optionHeight) {
+          
+          this.executeClickOption(this.clickOptions[i].action);
+          return true;
+        }
+      }
+      
+      return false;
+    }
+
+    // 执行点击选项动作
+    executeClickOption(action) {
+      console.log('🎯 [SOFTCAT] 执行点击选项:', action);
+      
+      // 执行动作后隐藏选项菜单
+      this.showClickOptions = false;
+      
+      switch (action) {
+        case 'collectTabs':
+          this.collectAllTabs();
+          break;
+        case 'laundryRoom':
+          this.openLaundryRoom();
+          break;
+        case 'searchHistory':
+          this.openSearchHistory();
+          break;
+        default:
+          console.warn('未知的点击选项动作:', action);
+      }
+    }
+
+    // 一键收Tab功能
+    collectAllTabs() {
+      console.log('📋 [SOFTCAT] 执行一键收Tab功能');
+      
+      // 发送消息给background script收集所有tab
+      chrome.runtime.sendMessage({ action: 'collectAllTabs' }, (response) => {
+        if (response && response.success) {
+          console.log('✅ [SOFTCAT] Tab收集成功:', response.tabs);
+          this.showNotification('已收集 ' + response.tabs.length + ' 个标签页');
+        } else {
+          console.error('❌ [SOFTCAT] Tab收集失败:', response?.error);
+          this.showNotification('Tab收集失败', 'error');
+        }
+      });
+    }
+
+    // 打开洗衣房
+    openLaundryRoom() {
+      console.log('🏠 [SOFTCAT] 打开洗衣房');
+      
+      // 发送消息给background script打开洗衣房页面
+      chrome.runtime.sendMessage({ action: 'openLaundryRoom' }, (response) => {
+        if (response && response.success) {
+          console.log('✅ [SOFTCAT] 洗衣房已打开');
+        } else {
+          console.error('❌ [SOFTCAT] 洗衣房打开失败:', response?.error);
+          this.showNotification('洗衣房打开失败', 'error');
+        }
+      });
+    }
+
+    // 打开查询记录（placeholder）
+    openSearchHistory() {
+      console.log('🔍 [SOFTCAT] 打开查询记录（功能开发中）');
+      this.showNotification('查询记录功能开发中...', 'info');
+    }
+
+    // 显示通知
+    showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? '#ff6b6b' : type === 'info' ? '#4facfe' : '#51cf66'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 2147483647;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        max-width: 300px;
+        text-align: center;
+      `;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 3000);
+    }
+
     // 应用洗衣机震动效果
     applyWashingMachineEffect() {
       if (!this.machine || !this.softBody || !this.isRunning) return;
@@ -789,8 +981,24 @@
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
+      // 先检查是否点击了选项菜单
+      if (this.handleClickOptionClick(mouseX, mouseY)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      
       const zone = this.isPointInInteractionZone(mouseX, mouseY);
       if (zone) {
+        // 如果是软体猫区域，切换选项显示状态
+        if (zone.type === 'softcat') {
+          this.toggleClickOptions(mouseX, mouseY);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        
+        // 其他区域开始拖拽
         this.startDragging(mouseX, mouseY);
         canvas.style.cursor = 'grabbing';
         e.preventDefault();

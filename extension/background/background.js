@@ -69,6 +69,12 @@ class SoftCatBackgroundManager {
       case 'getSoftCatStatus':
         return await this.getSoftCatStatus(sender.tab);
         
+      case 'collectAllTabs':
+        return await this.collectAllTabs();
+        
+      case 'openLaundryRoom':
+        return await this.openLaundryRoom();
+        
       case 'test':
         return { status: 'background script working', timestamp: Date.now() };
         
@@ -425,6 +431,72 @@ class SoftCatBackgroundManager {
       
     } catch (error) {
       console.error('❌ [BACKGROUND] 恢复状态失败:', error);
+    }
+  }
+
+  // 一键收Tab功能
+  async collectAllTabs() {
+    try {
+      console.log('📋 [BACKGROUND] 开始收集所有标签页...');
+      
+      const tabs = await chrome.tabs.query({});
+      const tabData = tabs.map(tab => ({
+        id: tab.id,
+        url: tab.url,
+        title: tab.title,
+        favIconUrl: tab.favIconUrl,
+        windowId: tab.windowId,
+        active: tab.active,
+        pinned: tab.pinned,
+        audible: tab.audible,
+        mutedInfo: tab.mutedInfo,
+        lastAccessed: tab.lastAccessed || Date.now()
+      }));
+      
+      console.log(`✅ [BACKGROUND] 成功收集 ${tabData.length} 个标签页`);
+      
+      return {
+        success: true,
+        tabs: tabData,
+        count: tabData.length,
+        timestamp: Date.now()
+      };
+      
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 收集标签页失败:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // 打开洗衣房
+  async openLaundryRoom() {
+    try {
+      console.log('🏠 [BACKGROUND] 打开洗衣房...');
+      
+      // 创建洗衣房页面
+      const laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
+      const tab = await chrome.tabs.create({
+        url: laundryRoomUrl,
+        active: true
+      });
+      
+      console.log('✅ [BACKGROUND] 洗衣房已打开，标签页ID:', tab.id);
+      
+      return {
+        success: true,
+        tabId: tab.id,
+        url: laundryRoomUrl
+      };
+      
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 打开洗衣房失败:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 

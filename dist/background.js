@@ -93,7 +93,7 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
           while (1) switch (_context.n) {
             case 0:
               _t = request.action;
-              _context.n = _t === 'toggleSoftCat' ? 1 : _t === 'getSoftCatStatus' ? 3 : _t === 'test' ? 5 : 6;
+              _context.n = _t === 'toggleSoftCat' ? 1 : _t === 'getSoftCatStatus' ? 3 : _t === 'collectAllTabs' ? 5 : _t === 'openLaundryRoom' ? 7 : _t === 'test' ? 9 : 10;
               break;
             case 1:
               _context.n = 2;
@@ -106,13 +106,23 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
             case 4:
               return _context.a(2, _context.v);
             case 5:
+              _context.n = 6;
+              return this.collectAllTabs();
+            case 6:
+              return _context.a(2, _context.v);
+            case 7:
+              _context.n = 8;
+              return this.openLaundryRoom();
+            case 8:
+              return _context.a(2, _context.v);
+            case 9:
               return _context.a(2, {
                 status: 'background script working',
                 timestamp: Date.now()
               });
-            case 6:
+            case 10:
               throw new Error("\u672A\u77E5\u64CD\u4F5C: ".concat(request.action));
-            case 7:
+            case 11:
               return _context.a(2);
           }
         }, _callee, this);
@@ -655,6 +665,99 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
         return _restoreState.apply(this, arguments);
       }
       return restoreState;
+    }() // 一键收Tab功能
+  }, {
+    key: "collectAllTabs",
+    value: function () {
+      var _collectAllTabs = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
+        var tabs, tabData, _t0;
+        return _regenerator().w(function (_context1) {
+          while (1) switch (_context1.p = _context1.n) {
+            case 0:
+              _context1.p = 0;
+              console.log('📋 [BACKGROUND] 开始收集所有标签页...');
+              _context1.n = 1;
+              return chrome.tabs.query({});
+            case 1:
+              tabs = _context1.v;
+              tabData = tabs.map(function (tab) {
+                return {
+                  id: tab.id,
+                  url: tab.url,
+                  title: tab.title,
+                  favIconUrl: tab.favIconUrl,
+                  windowId: tab.windowId,
+                  active: tab.active,
+                  pinned: tab.pinned,
+                  audible: tab.audible,
+                  mutedInfo: tab.mutedInfo,
+                  lastAccessed: tab.lastAccessed || Date.now()
+                };
+              });
+              console.log("\u2705 [BACKGROUND] \u6210\u529F\u6536\u96C6 ".concat(tabData.length, " \u4E2A\u6807\u7B7E\u9875"));
+              return _context1.a(2, {
+                success: true,
+                tabs: tabData,
+                count: tabData.length,
+                timestamp: Date.now()
+              });
+            case 2:
+              _context1.p = 2;
+              _t0 = _context1.v;
+              console.error('❌ [BACKGROUND] 收集标签页失败:', _t0);
+              return _context1.a(2, {
+                success: false,
+                error: _t0.message
+              });
+          }
+        }, _callee1, null, [[0, 2]]);
+      }));
+      function collectAllTabs() {
+        return _collectAllTabs.apply(this, arguments);
+      }
+      return collectAllTabs;
+    }() // 打开洗衣房
+  }, {
+    key: "openLaundryRoom",
+    value: function () {
+      var _openLaundryRoom = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee10() {
+        var laundryRoomUrl, tab, _t1;
+        return _regenerator().w(function (_context10) {
+          while (1) switch (_context10.p = _context10.n) {
+            case 0:
+              _context10.p = 0;
+              console.log('🏠 [BACKGROUND] 打开洗衣房...');
+
+              // 创建洗衣房页面
+              laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
+              _context10.n = 1;
+              return chrome.tabs.create({
+                url: laundryRoomUrl,
+                active: true
+              });
+            case 1:
+              tab = _context10.v;
+              console.log('✅ [BACKGROUND] 洗衣房已打开，标签页ID:', tab.id);
+              return _context10.a(2, {
+                success: true,
+                tabId: tab.id,
+                url: laundryRoomUrl
+              });
+            case 2:
+              _context10.p = 2;
+              _t1 = _context10.v;
+              console.error('❌ [BACKGROUND] 打开洗衣房失败:', _t1);
+              return _context10.a(2, {
+                success: false,
+                error: _t1.message
+              });
+          }
+        }, _callee10, null, [[0, 2]]);
+      }));
+      function openLaundryRoom() {
+        return _openLaundryRoom.apply(this, arguments);
+      }
+      return openLaundryRoom;
     }() // 调试方法
   }, {
     key: "getDebugInfo",
