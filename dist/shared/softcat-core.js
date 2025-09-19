@@ -734,6 +734,58 @@
       }
     }
 
+    // 更新基础交互区域（不覆盖选项菜单区域）
+    updateBasicInteractionZones() {
+      // 保存选项菜单区域
+      const optionsZone = this.interactionZones.find(zone => zone.type === 'options');
+      
+      // 清空并重新添加基础区域
+      this.interactionZones = this.interactionZones.filter(zone => zone.type !== 'machine' && zone.type !== 'softcat');
+      
+      // 洗衣机交互区域
+      if (this.machine) {
+        const padding = 10;
+        const halfWidth = (this.CONFIG.machine.baseWidth * this.CONFIG.machine.physicsScale) / 2;
+        const halfHeight = (this.CONFIG.machine.baseHeight * this.CONFIG.machine.physicsScale) / 2;
+        
+        this.interactionZones.push({
+          type: 'machine',
+          x: this.machine.position.x - halfWidth - padding,
+          y: this.machine.position.y - halfHeight - padding,
+          width: (halfWidth + padding) * 2,
+          height: (halfHeight + padding) * 2
+        });
+      }
+      
+      // 软体猫交互区域
+      if (this.softBody && this.softBody.bodies) {
+        const bodies = this.softBody.bodies;
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        
+        for (let body of bodies) {
+          minX = Math.min(minX, body.position.x);
+          maxX = Math.max(maxX, body.position.x);
+          minY = Math.min(minY, body.position.y);
+          maxY = Math.max(maxY, body.position.y);
+        }
+        
+        const padding = 30;
+        this.interactionZones.push({
+          type: 'softcat',
+          x: minX - padding,
+          y: minY - padding,
+          width: (maxX - minX) + padding * 2,
+          height: (maxY - minY) + padding * 2
+        });
+      }
+      
+      // 恢复选项菜单区域
+      if (optionsZone) {
+        this.interactionZones.push(optionsZone);
+      }
+    }
+
     // 更新选项菜单交互区域
     updateOptionsInteractionZone(x, y, width, height) {
       // 移除旧的选项菜单交互区域
@@ -751,7 +803,8 @@
 
     // 检查点是否在交互区域
     isPointInInteractionZone(x, y) {
-      this.updateInteractionZones();
+      // 只更新基础交互区域（洗衣机和软体猫），不覆盖选项菜单区域
+      this.updateBasicInteractionZones();
       
       for (let zone of this.interactionZones) {
         if (x >= zone.x && x <= zone.x + zone.width &&
@@ -843,13 +896,29 @@
       const optionsWidth = 200;
       const optionHeight = 40;
       const spacing = 8;
+      const totalHeight = this.clickOptions.length * (optionHeight + spacing) - spacing;
+      
+      // 计算实际位置（与drawClickOptions中的逻辑保持一致）
+      let x = this.clickOptionsX + 20;
+      let y = this.clickOptionsY - totalHeight / 2;
+      
+      if (x + optionsWidth > window.innerWidth) x = this.clickOptionsX - optionsWidth - 20;
+      if (y < 0) y = 10;
+      if (y + totalHeight > window.innerHeight) y = window.innerHeight - totalHeight - 10;
+      
+      console.log('🎯 [SOFTCAT] 检测选项点击:', {
+        mouseX, mouseY, 
+        optionsX: x, optionsY: y, 
+        optionsWidth, totalHeight
+      });
       
       for (let i = 0; i < this.clickOptions.length; i++) {
-        const optionY = this.clickOptionsY - (this.clickOptions.length * (optionHeight + spacing) - spacing) / 2 + i * (optionHeight + spacing);
+        const optionY = y + i * (optionHeight + spacing);
         
-        if (mouseX >= this.clickOptionsX + 20 && mouseX <= this.clickOptionsX + 20 + optionsWidth &&
+        if (mouseX >= x && mouseX <= x + optionsWidth &&
             mouseY >= optionY && mouseY <= optionY + optionHeight) {
           
+          console.log('✅ [SOFTCAT] 点击了选项:', this.clickOptions[i].text);
           this.executeClickOption(this.clickOptions[i].action);
           return true;
         }
@@ -1006,7 +1075,7 @@
     // 全局鼠标按下
     handleGlobalMouseDown(e) {
       const canvas = document.getElementById('softcat-canvas');
-      if (!canvas || canvas.style.pointerEvents === 'none') return;
+      if (!canvas) return;
       
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -1014,9 +1083,17 @@
       
       const zone = this.isPointInInteractionZone(mouseX, mouseY);
       
+      console.log('🎯 [SOFTCAT] 鼠标按下:', {
+        mouseX, mouseY, 
+        zone: zone?.type, 
+        showClickOptions: this.showClickOptions,
+        pointerEvents: canvas.style.pointerEvents
+      });
+      
       if (zone) {
         // 如果是选项菜单区域，处理选项点击
         if (zone.type === 'options') {
+          console.log('🎯 [SOFTCAT] 检测到选项菜单区域点击');
           if (this.handleClickOptionClick(mouseX, mouseY)) {
             e.preventDefault();
             e.stopPropagation();
