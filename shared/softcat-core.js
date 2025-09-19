@@ -540,6 +540,9 @@
       document.addEventListener('mousedown', this.handleGlobalMouseDown.bind(this));
       document.addEventListener('mouseup', this.handleGlobalMouseUp.bind(this));
       
+      // 全局点击事件监听（用于关闭选项菜单）
+      document.addEventListener('click', this.handleGlobalClick.bind(this));
+      
       // 键盘事件
       document.addEventListener('keydown', this.handleKeyDown.bind(this));
       
@@ -731,6 +734,21 @@
       }
     }
 
+    // 更新选项菜单交互区域
+    updateOptionsInteractionZone(x, y, width, height) {
+      // 移除旧的选项菜单交互区域
+      this.interactionZones = this.interactionZones.filter(zone => zone.type !== 'options');
+      
+      // 添加新的选项菜单交互区域
+      this.interactionZones.push({
+        type: 'options',
+        x: x,
+        y: y,
+        width: width,
+        height: height
+      });
+    }
+
     // 检查点是否在交互区域
     isPointInInteractionZone(x, y) {
       this.updateInteractionZones();
@@ -777,6 +795,9 @@
       if (x + optionsWidth > p.width) x = this.clickOptionsX - optionsWidth - 20;
       if (y < 0) y = 10;
       if (y + totalHeight > p.height) y = p.height - totalHeight - 10;
+      
+      // 更新选项菜单的交互区域
+      this.updateOptionsInteractionZone(x, y, optionsWidth, totalHeight);
       
       // 绘制背景
       p.fill(255, 255, 255, 240);
@@ -959,7 +980,17 @@
       // 动态切换指针事件和光标
       if (zone) {
         canvas.style.pointerEvents = 'auto';
-        canvas.style.cursor = this.isDraggingMachine ? 'grabbing' : 'grab';
+        
+        // 根据交互区域类型设置不同的光标
+        if (zone.type === 'options') {
+          canvas.style.cursor = 'pointer';
+        } else if (zone.type === 'machine') {
+          canvas.style.cursor = this.isDraggingMachine ? 'grabbing' : 'grab';
+        } else if (zone.type === 'softcat') {
+          canvas.style.cursor = 'pointer';
+        } else {
+          canvas.style.cursor = 'default';
+        }
       } else {
         canvas.style.pointerEvents = 'none';
         canvas.style.cursor = 'default';
@@ -981,28 +1012,37 @@
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
-      // 先检查是否点击了选项菜单
-      if (this.handleClickOptionClick(mouseX, mouseY)) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      
       const zone = this.isPointInInteractionZone(mouseX, mouseY);
+      
       if (zone) {
+        // 如果是选项菜单区域，处理选项点击
+        if (zone.type === 'options') {
+          if (this.handleClickOptionClick(mouseX, mouseY)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+        }
         // 如果是软体猫区域，切换选项显示状态
-        if (zone.type === 'softcat') {
+        else if (zone.type === 'softcat') {
           this.toggleClickOptions(mouseX, mouseY);
           e.preventDefault();
           e.stopPropagation();
           return;
         }
-        
-        // 其他区域开始拖拽
-        this.startDragging(mouseX, mouseY);
-        canvas.style.cursor = 'grabbing';
-        e.preventDefault();
-        e.stopPropagation();
+        // 如果是洗衣机区域，开始拖拽
+        else if (zone.type === 'machine') {
+          this.startDragging(mouseX, mouseY);
+          canvas.style.cursor = 'grabbing';
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      } else {
+        // 点击画布外部，关闭选项菜单
+        if (this.showClickOptions) {
+          this.showClickOptions = false;
+          console.log('🎯 [SOFTCAT] 点击外部，隐藏选项菜单');
+        }
       }
     }
 
@@ -1017,6 +1057,16 @@
         }
         
         e.preventDefault();
+      }
+    }
+
+    // 全局点击处理
+    handleGlobalClick(e) {
+      // 如果点击的不是画布，关闭选项菜单
+      const canvas = document.getElementById('softcat-canvas');
+      if (canvas && !canvas.contains(e.target) && this.showClickOptions) {
+        this.showClickOptions = false;
+        console.log('🎯 [SOFTCAT] 点击画布外部，隐藏选项菜单');
       }
     }
 
