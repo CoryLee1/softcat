@@ -3,10 +3,14 @@
 
 console.log('🔧 [BACKGROUND] 软体猫后台脚本已加载');
 
+// 导入数据库管理器
+importScripts('./database.js');
+
 class SoftCatBackgroundManager {
   constructor() {
     this.tabStates = new Map(); // 存储每个标签页的状态
     this.globalEnabled = false;
+    this.database = new SoftCatDatabase(); // 初始化数据库
     
     this.init();
   }
@@ -74,6 +78,12 @@ class SoftCatBackgroundManager {
         
       case 'openLaundryRoom':
         return await this.openLaundryRoom();
+        
+      case 'getDatabaseTabs':
+        return await this.getDatabaseTabs();
+        
+      case 'getLatestCollection':
+        return await this.getLatestCollection();
         
       case 'test':
         return { status: 'background script working', timestamp: Date.now() };
@@ -439,6 +449,9 @@ class SoftCatBackgroundManager {
     try {
       console.log('📋 [BACKGROUND] 开始一键收Tab...');
       
+      // 初始化数据库
+      await this.database.init();
+      
       // 获取所有标签页
       const tabs = await chrome.tabs.query({});
       const tabData = tabs.map(tab => ({
@@ -454,13 +467,23 @@ class SoftCatBackgroundManager {
         lastAccessed: tab.lastAccessed || Date.now()
       }));
       
-      // 保存标签页数据到存储
-      await chrome.storage.local.set({
-        collectedTabs: tabData,
-        collectedAt: Date.now()
-      });
+      console.log(`📊 [BACKGROUND] 开始处理 ${tabData.length} 个标签页...`);
       
-      console.log(`✅ [BACKGROUND] 已保存 ${tabData.length} 个标签页数据`);
+      // 保存每个标签页的详细信息到数据库
+      const savedTabIds = [];
+      for (const tab of tabData) {
+        try {
+          const savedTab = await this.database.saveTabDetails(tab);
+          savedTabIds.push(savedTab.id);
+          console.log(`✅ [BACKGROUND] 已保存标签页: ${savedTab.summary}`);
+        } catch (error) {
+          console.error(`❌ [BACKGROUND] 保存标签页失败: ${tab.url}`, error);
+        }
+      }
+      
+      // 保存收集记录
+      const collectionId = await this.database.saveCollection(savedTabIds, '一键收Tab');
+      console.log(`📚 [BACKGROUND] 已保存收集记录: ${collectionId}`);
       
       // 关闭除当前标签页外的所有标签页
       const currentTab = tabs.find(tab => tab.active);
@@ -486,6 +509,8 @@ class SoftCatBackgroundManager {
         tabs: tabData,
         count: tabData.length,
         closedCount: tabsToClose.length,
+        savedCount: savedTabIds.length,
+        collectionId: collectionId,
         timestamp: Date.now()
       };
       
@@ -520,6 +545,57 @@ class SoftCatBackgroundManager {
       
     } catch (error) {
       console.error('❌ [BACKGROUND] 打开洗衣房失败:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // 获取数据库中的标签页
+  async getDatabaseTabs() {
+    try {
+      await this.database.init();
+      const tabs = await this.database.getAllTabs();
+      
+      return {
+        success: true,
+        tabs: tabs,
+        count: tabs.length
+      };
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 获取数据库标签页失败:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // 获取最新收集记录
+  async getLatestCollection() {
+    try {
+      await this.database.init();
+      const collection = await this.database.getLatestCollection();
+      
+      if (collection) {
+        const tabs = await this.database.getTabsByCollection(collection.id);
+        return {
+          success: true,
+          collection: collection,
+          tabs: tabs,
+          count: tabs.length
+        };
+      } else {
+        return {
+          success: true,
+          collection: null,
+          tabs: [],
+          count: 0
+        };
+      }
+    } catch (error) {
+      console.error('❌ [BACKGROUND] 获取最新收集记录失败:', error);
       return {
         success: false,
         error: error.message

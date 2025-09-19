@@ -215,20 +215,21 @@
     // 获取标签页信息
     async function loadTabsData() {
       try {
-        // 从存储中获取收集的标签页数据
-        const result = await chrome.storage.local.get(['collectedTabs', 'collectedAt']);
+        // 从数据库获取最新收集的标签页数据
+        const response = await chrome.runtime.sendMessage({ action: 'getLatestCollection' });
         
-        if (result.collectedTabs && result.collectedTabs.length > 0) {
-          const tabs = result.collectedTabs;
-          const collectedAt = new Date(result.collectedAt);
+        if (response && response.success && response.tabs && response.tabs.length > 0) {
+          const tabs = response.tabs;
+          const collection = response.collection;
+          const collectedAt = new Date(collection.createdAt);
           
           // 更新统计信息
           document.getElementById('totalTabs').textContent = tabs.length;
-          document.getElementById('activeTabs').textContent = tabs.filter(tab => tab.active).length;
-          document.getElementById('pinnedTabs').textContent = tabs.filter(tab => tab.pinned).length;
+          document.getElementById('activeTabs').textContent = tabs.filter(tab => tab.originalData?.active).length;
+          document.getElementById('pinnedTabs').textContent = tabs.filter(tab => tab.originalData?.pinned).length;
           
           // 计算窗口数量
-          const windows = new Set(tabs.map(tab => tab.windowId));
+          const windows = new Set(tabs.map(tab => tab.originalData?.windowId).filter(Boolean));
           document.getElementById('windowsCount').textContent = windows.size;
           
           // 显示收集时间
@@ -273,15 +274,32 @@
         return;
       }
 
-      const tabsHtml = tabs.map(tab => `
-        <div class="tab-item">
-          <img src="${tab.favIconUrl || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M7 7h10M7 11h10M7 15h4"/></svg>"}' 
-               class="tab-favicon" 
-               onerror="this.src='data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/><path d=\"M7 7h10M7 11h10M7 15h4\"/></svg>'" />
-          <div class="tab-title">${tab.title || '无标题'}</div>
-          <div class="tab-url">${tab.url}</div>
-        </div>
-      `).join('');
+      const tabsHtml = tabs.map(tab => {
+        const siteName = tab.site?.name || '未知网站';
+        const summary = tab.summary || tab.title || '无标题';
+        const tags = tab.tags || [];
+        const favicon = tab.site?.favicon || tab.originalData?.favIconUrl || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M7 7h10M7 11h10M7 15h4"/></svg>';
+        const url = tab.url || tab.originalData?.url || '#';
+        const createdAt = new Date(tab.createdAt).toLocaleString();
+        
+        return `
+          <div class="tab-item" style="border-left: 4px solid ${tab.image?.palette?.[0] || '#4facfe'};">
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <img src="${favicon}" 
+                   class="tab-favicon" 
+                   onerror="this.src='data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" ry=\"2\"/><path d=\"M7 7h10M7 11h10M7 15h4\"/></svg>'" />
+              <div style="flex: 1; margin-left: 12px;">
+                <div class="tab-title" style="font-weight: 600; margin-bottom: 4px;">${summary}</div>
+                <div class="tab-url" style="font-size: 12px; color: #666; margin-bottom: 4px;">${siteName} • ${url}</div>
+                <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+                  ${tags.map(tag => `<span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 10px; font-size: 10px;">${tag}</span>`).join('')}
+                </div>
+                <div style="font-size: 10px; color: #999;">收集时间: ${createdAt}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
 
       tabsList.innerHTML = tabsHtml;
     }

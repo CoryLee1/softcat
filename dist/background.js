@@ -1,5 +1,6 @@
 /******/ (() => { // webpackBootstrap
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -22,11 +23,16 @@ function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e 
 // 改进状态管理和错误处理
 
 console.log('🔧 [BACKGROUND] 软体猫后台脚本已加载');
+
+// 导入数据库管理器
+importScripts('./database.js');
 var SoftCatBackgroundManager = /*#__PURE__*/function () {
   function SoftCatBackgroundManager() {
     _classCallCheck(this, SoftCatBackgroundManager);
     this.tabStates = new Map(); // 存储每个标签页的状态
     this.globalEnabled = false;
+    this.database = new SoftCatDatabase(); // 初始化数据库
+
     this.init();
   }
 
@@ -93,7 +99,7 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
           while (1) switch (_context.n) {
             case 0:
               _t = request.action;
-              _context.n = _t === 'toggleSoftCat' ? 1 : _t === 'getSoftCatStatus' ? 3 : _t === 'collectAllTabs' ? 5 : _t === 'openLaundryRoom' ? 7 : _t === 'test' ? 9 : 10;
+              _context.n = _t === 'toggleSoftCat' ? 1 : _t === 'getSoftCatStatus' ? 3 : _t === 'collectAllTabs' ? 5 : _t === 'openLaundryRoom' ? 7 : _t === 'getDatabaseTabs' ? 9 : _t === 'getLatestCollection' ? 11 : _t === 'test' ? 13 : 14;
               break;
             case 1:
               _context.n = 2;
@@ -116,13 +122,23 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
             case 8:
               return _context.a(2, _context.v);
             case 9:
+              _context.n = 10;
+              return this.getDatabaseTabs();
+            case 10:
+              return _context.a(2, _context.v);
+            case 11:
+              _context.n = 12;
+              return this.getLatestCollection();
+            case 12:
+              return _context.a(2, _context.v);
+            case 13:
               return _context.a(2, {
                 status: 'background script working',
                 timestamp: Date.now()
               });
-            case 10:
+            case 14:
               throw new Error("\u672A\u77E5\u64CD\u4F5C: ".concat(request.action));
-            case 11:
+            case 15:
               return _context.a(2);
           }
         }, _callee, this);
@@ -670,17 +686,20 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
     key: "collectAllTabs",
     value: function () {
       var _collectAllTabs = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
-        var tabs, tabData, currentTab, tabsToClose, tabIds, laundryRoomUrl, _t0;
+        var tabs, tabData, savedTabIds, _iterator, _step, tab, savedTab, collectionId, currentTab, tabsToClose, tabIds, laundryRoomUrl, _t0, _t1, _t10;
         return _regenerator().w(function (_context1) {
           while (1) switch (_context1.p = _context1.n) {
             case 0:
               _context1.p = 0;
               console.log('📋 [BACKGROUND] 开始一键收Tab...');
 
-              // 获取所有标签页
+              // 初始化数据库
               _context1.n = 1;
-              return chrome.tabs.query({});
+              return this.database.init();
             case 1:
+              _context1.n = 2;
+              return chrome.tabs.query({});
+            case 2:
               tabs = _context1.v;
               tabData = tabs.map(function (tab) {
                 return {
@@ -695,14 +714,53 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
                   mutedInfo: tab.mutedInfo,
                   lastAccessed: tab.lastAccessed || Date.now()
                 };
-              }); // 保存标签页数据到存储
-              _context1.n = 2;
-              return chrome.storage.local.set({
-                collectedTabs: tabData,
-                collectedAt: Date.now()
               });
-            case 2:
-              console.log("\u2705 [BACKGROUND] \u5DF2\u4FDD\u5B58 ".concat(tabData.length, " \u4E2A\u6807\u7B7E\u9875\u6570\u636E"));
+              console.log("\uD83D\uDCCA [BACKGROUND] \u5F00\u59CB\u5904\u7406 ".concat(tabData.length, " \u4E2A\u6807\u7B7E\u9875..."));
+
+              // 保存每个标签页的详细信息到数据库
+              savedTabIds = [];
+              _iterator = _createForOfIteratorHelper(tabData);
+              _context1.p = 3;
+              _iterator.s();
+            case 4:
+              if ((_step = _iterator.n()).done) {
+                _context1.n = 9;
+                break;
+              }
+              tab = _step.value;
+              _context1.p = 5;
+              _context1.n = 6;
+              return this.database.saveTabDetails(tab);
+            case 6:
+              savedTab = _context1.v;
+              savedTabIds.push(savedTab.id);
+              console.log("\u2705 [BACKGROUND] \u5DF2\u4FDD\u5B58\u6807\u7B7E\u9875: ".concat(savedTab.summary));
+              _context1.n = 8;
+              break;
+            case 7:
+              _context1.p = 7;
+              _t0 = _context1.v;
+              console.error("\u274C [BACKGROUND] \u4FDD\u5B58\u6807\u7B7E\u9875\u5931\u8D25: ".concat(tab.url), _t0);
+            case 8:
+              _context1.n = 4;
+              break;
+            case 9:
+              _context1.n = 11;
+              break;
+            case 10:
+              _context1.p = 10;
+              _t1 = _context1.v;
+              _iterator.e(_t1);
+            case 11:
+              _context1.p = 11;
+              _iterator.f();
+              return _context1.f(11);
+            case 12:
+              _context1.n = 13;
+              return this.database.saveCollection(savedTabIds, '一键收Tab');
+            case 13:
+              collectionId = _context1.v;
+              console.log("\uD83D\uDCDA [BACKGROUND] \u5DF2\u4FDD\u5B58\u6536\u96C6\u8BB0\u5F55: ".concat(collectionId));
 
               // 关闭除当前标签页外的所有标签页
               currentTab = tabs.find(function (tab) {
@@ -712,43 +770,45 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
                 return tab.id !== currentTab.id;
               });
               if (!(tabsToClose.length > 0)) {
-                _context1.n = 4;
+                _context1.n = 15;
                 break;
               }
               tabIds = tabsToClose.map(function (tab) {
                 return tab.id;
               });
-              _context1.n = 3;
+              _context1.n = 14;
               return chrome.tabs.remove(tabIds);
-            case 3:
+            case 14:
               console.log("\uD83D\uDDD1\uFE0F [BACKGROUND] \u5DF2\u5173\u95ED ".concat(tabsToClose.length, " \u4E2A\u6807\u7B7E\u9875"));
-            case 4:
+            case 15:
               // 打开洗衣房页面
               laundryRoomUrl = chrome.runtime.getURL('laundry-room.html');
-              _context1.n = 5;
+              _context1.n = 16;
               return chrome.tabs.create({
                 url: laundryRoomUrl,
                 active: true
               });
-            case 5:
+            case 16:
               console.log('🏠 [BACKGROUND] 已打开洗衣房页面');
               return _context1.a(2, {
                 success: true,
                 tabs: tabData,
                 count: tabData.length,
                 closedCount: tabsToClose.length,
+                savedCount: savedTabIds.length,
+                collectionId: collectionId,
                 timestamp: Date.now()
               });
-            case 6:
-              _context1.p = 6;
-              _t0 = _context1.v;
-              console.error('❌ [BACKGROUND] 一键收Tab失败:', _t0);
+            case 17:
+              _context1.p = 17;
+              _t10 = _context1.v;
+              console.error('❌ [BACKGROUND] 一键收Tab失败:', _t10);
               return _context1.a(2, {
                 success: false,
-                error: _t0.message
+                error: _t10.message
               });
           }
-        }, _callee1, null, [[0, 6]]);
+        }, _callee1, this, [[5, 7], [3, 10, 11, 12], [0, 17]]);
       }));
       function collectAllTabs() {
         return _collectAllTabs.apply(this, arguments);
@@ -759,7 +819,7 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
     key: "openLaundryRoom",
     value: function () {
       var _openLaundryRoom = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee10() {
-        var laundryRoomUrl, tab, _t1;
+        var laundryRoomUrl, tab, _t11;
         return _regenerator().w(function (_context10) {
           while (1) switch (_context10.p = _context10.n) {
             case 0:
@@ -783,11 +843,11 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
               });
             case 2:
               _context10.p = 2;
-              _t1 = _context10.v;
-              console.error('❌ [BACKGROUND] 打开洗衣房失败:', _t1);
+              _t11 = _context10.v;
+              console.error('❌ [BACKGROUND] 打开洗衣房失败:', _t11);
               return _context10.a(2, {
                 success: false,
-                error: _t1.message
+                error: _t11.message
               });
           }
         }, _callee10, null, [[0, 2]]);
@@ -796,6 +856,101 @@ var SoftCatBackgroundManager = /*#__PURE__*/function () {
         return _openLaundryRoom.apply(this, arguments);
       }
       return openLaundryRoom;
+    }() // 获取数据库中的标签页
+  }, {
+    key: "getDatabaseTabs",
+    value: function () {
+      var _getDatabaseTabs = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee11() {
+        var tabs, _t12;
+        return _regenerator().w(function (_context11) {
+          while (1) switch (_context11.p = _context11.n) {
+            case 0:
+              _context11.p = 0;
+              _context11.n = 1;
+              return this.database.init();
+            case 1:
+              _context11.n = 2;
+              return this.database.getAllTabs();
+            case 2:
+              tabs = _context11.v;
+              return _context11.a(2, {
+                success: true,
+                tabs: tabs,
+                count: tabs.length
+              });
+            case 3:
+              _context11.p = 3;
+              _t12 = _context11.v;
+              console.error('❌ [BACKGROUND] 获取数据库标签页失败:', _t12);
+              return _context11.a(2, {
+                success: false,
+                error: _t12.message
+              });
+          }
+        }, _callee11, this, [[0, 3]]);
+      }));
+      function getDatabaseTabs() {
+        return _getDatabaseTabs.apply(this, arguments);
+      }
+      return getDatabaseTabs;
+    }() // 获取最新收集记录
+  }, {
+    key: "getLatestCollection",
+    value: function () {
+      var _getLatestCollection = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee12() {
+        var collection, tabs, _t13;
+        return _regenerator().w(function (_context12) {
+          while (1) switch (_context12.p = _context12.n) {
+            case 0:
+              _context12.p = 0;
+              _context12.n = 1;
+              return this.database.init();
+            case 1:
+              _context12.n = 2;
+              return this.database.getLatestCollection();
+            case 2:
+              collection = _context12.v;
+              if (!collection) {
+                _context12.n = 4;
+                break;
+              }
+              _context12.n = 3;
+              return this.database.getTabsByCollection(collection.id);
+            case 3:
+              tabs = _context12.v;
+              return _context12.a(2, {
+                success: true,
+                collection: collection,
+                tabs: tabs,
+                count: tabs.length
+              });
+            case 4:
+              return _context12.a(2, {
+                success: true,
+                collection: null,
+                tabs: [],
+                count: 0
+              });
+            case 5:
+              _context12.n = 7;
+              break;
+            case 6:
+              _context12.p = 6;
+              _t13 = _context12.v;
+              console.error('❌ [BACKGROUND] 获取最新收集记录失败:', _t13);
+              return _context12.a(2, {
+                success: false,
+                error: _t13.message
+              });
+            case 7:
+              return _context12.a(2);
+          }
+        }, _callee12, this, [[0, 6]]);
+      }));
+      function getLatestCollection() {
+        return _getLatestCollection.apply(this, arguments);
+      }
+      return getLatestCollection;
     }() // 调试方法
   }, {
     key: "getDebugInfo",

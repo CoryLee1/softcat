@@ -74,6 +74,10 @@ module.exports = {
           to: 'laundry-room.html'
         },
         {
+          from: 'extension/background/database.js',
+          to: 'database.js'
+        },
+        {
           from: 'extension/assets',
           to: 'assets'
         },
